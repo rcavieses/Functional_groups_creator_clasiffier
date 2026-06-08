@@ -1,7 +1,7 @@
 """
-config.py - Configuración del proyecto de Grupos Funcionales
-=============================================================
-Parámetros globales, rutas de archivos y criterios de evaluación.
+config.py - Functional Groups Project Configuration
+=====================================================
+Global parameters, file paths, and evaluation criteria.
 """
 
 import os
@@ -9,10 +9,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# ─── Cargar variables de entorno desde .env ──────────────────────────
+# ─── Load environment variables from .env ──────────────────────────
 load_dotenv(Path(__file__).parent / ".env", override=True)
 
-# ─── Rutas del proyecto ───────────────────────────────────────────────
+# ─── Project paths ───────────────────────────────────────────────
 PROJECT_DIR = Path(__file__).parent
 DATA_DIR = PROJECT_DIR / "data"
 OUTPUT_DIR = PROJECT_DIR / "output"
@@ -21,55 +21,60 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 SPECIES_CSV = DATA_DIR / "species_list.csv"
 INITIAL_GROUPS_JSON = DATA_DIR / "initial_groups.json"
 
-# ─── Restricciones del algoritmo ──────────────────────────────────────
-MAX_GROUPS = 80                # Límite máximo de grupos funcionales
-MAX_ITERATIONS = 10            # Iteraciones máximas del optimizador
-MIN_SPECIES_PER_GROUP = 1      # Mínimo de especies para considerar un grupo válido
-TARGET_UNASSIGNED_RATIO = 0.05 # Objetivo: <5% de especies sin grupo
+# ─── Algorithm constraints ──────────────────────────────────────
+MAX_GROUPS = 80                # Maximum number of functional groups
+MAX_ITERATIONS = 10            # Maximum iterations for optimizer
+MIN_SPECIES_PER_GROUP = 1      # Minimum species to consider a valid group
+TARGET_UNASSIGNED_RATIO = 0.05 # Target: <5% of unassigned species
 
-# ─── Configuración del LLM ───────────────────────────────────────────
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-LLM_MODEL = "claude-sonnet-4-20250514"
-LLM_MAX_TOKENS = 16384
-LLM_TEMPERATURE = 0.3  # Baja temperatura para consistencia en clasificación
+# ─── LLM Configuration with Ollama ────────────────────────────────
+# Ollama is a local server that runs LLM models
+# Recommended models: qwen3:8b, nous-hermes2 (⚡ FASTER), mistral, llama2, neural-chat
+# To download a model: ollama pull <model_name>
+OLLAMA_API_URL = os.environ.get("OLLAMA_API_URL", "http://localhost:11434/api/generate")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:8b")  # Configured from .env
+LLM_MAX_TOKENS = 8192  # Increased from 4096 to accommodate larger batch responses (187 species)
+LLM_TEMPERATURE = 0.3  # Lower temperature for consistency in classification
+OLLAMA_TIMEOUT = 600  # Timeout in seconds (increased for slower hardware)
+LLM_STREAMING = os.environ.get("LLM_STREAMING", "1").lower() in ("1", "true", "yes")  # Show tokens in real-time
 
-# ─── Criterios de puntaje para importancia de grupos ──────────────────
-# Cada criterio tiene un peso (weight) y una descripción.
-# El puntaje total de un grupo = suma ponderada de todos los criterios.
+# ─── Scoring criteria for group importance ──────────────────
+# Each criterion has a weight and description.
+# Total group score = weighted sum of all criteria.
 SCORING_CRITERIA = {
     "species_richness": {
         "weight": 0.20,
-        "description": "Número de especies en el grupo (normalizado)",
+        "description": "Number of species in the group (normalized)",
     },
     "trophic_importance": {
         "weight": 0.20,
-        "description": "Rol trófico clave en la red alimentaria del ecosistema",
+        "description": "Key trophic role in the ecosystem food web",
     },
     "commercial_value": {
         "weight": 0.15,
-        "description": "Importancia pesquera/comercial de las especies del grupo",
+        "description": "Fishery/commercial importance of group species",
     },
     "ecological_role": {
         "weight": 0.20,
-        "description": "Función ecosistémica (e.g., bioingeniería, bioturbación, producción primaria)",
+        "description": "Ecosystem function (e.g., bioengineering, bioturbation, primary production)",
     },
     "conservation_status": {
         "weight": 0.10,
-        "description": "Presencia de especies protegidas o en peligro",
+        "description": "Presence of protected or endangered species",
     },
     "uniqueness": {
         "weight": 0.15,
-        "description": "Qué tan único es el nicho funcional (baja redundancia con otros grupos)",
+        "description": "How unique the functional niche is (low redundancy with other groups)",
     },
 }
 
-# ─── Mapeo de valores textuales a puntajes numéricos ──────────────────
+# ─── Mapping of text values to numeric scores ──────────────────
 COMMERCIAL_IMPORTANCE_MAP = {
     "high": 1.0,
     "medium": 0.6,
     "low": 0.3,
-    "protected": 0.8,  # Alto valor de conservación
-    "ecological": 0.7, # Alto valor ecológico
+    "protected": 0.8,  # High conservation value
+    "ecological": 0.7, # High ecological value
 }
 
 TROPHIC_IMPORTANCE_MAP = {

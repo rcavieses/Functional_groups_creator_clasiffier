@@ -1,0 +1,89 @@
+Number,Functional_Group,Code,Species_Composition,Error
+1,Small Phytoplankton,PS,"Autotrophic picoplankton, nanoplankton (<20 Î¼m)",NA
+2,Large Phytoplankton,PL,"Diatoms, dinoflagellates (>20 Î¼m), large phytoplankton chains",NA
+3,Seagrass,SG,"Zostera marina, Halodule wrightii, other seagrass species",NA
+4,Macroalgae,MA,"Sargassum spp., Ulva spp., Codium spp., Padina spp., other macroalgae",NA
+5,Microzooplankton,ZM,"Heterotrophic flagellates, ciliates, protozooplankton (<200 Î¼m)",NA
+6,Mesozooplankton,ZS,"Copepods (Acartia, Paracalanus, Centropages), early larval stages (200-2000 Î¼m)",NA
+7,Large Zooplankton,ZL,"Large copepods (Calanus, Eucalanus), euphausids, chaetognaths, salps, jellyfish (>2000 Î¼m)",NA
+8,Jellyfish,JE,Jellyfish,
+9,Carrion,DC,"Dead organic matter, carcasses, large particulate organic matter",NA
+10,Refractory Detritus,DR,"Refractory particulate organic matter, cohesive small particles, resistant to decomposition",NA
+11,Labile Detritus,DL,"Labile particulate organic matter, easily degradable small particles",NA
+12,Pelagic Bacteria,PB,"Free-living pelagic bacteria, bacterioplankton",NA
+13,Benthic Bacteria,BB,"Benthic bacteria, sediment-associated microbes",NA
+14,Vaquita,VAQ,"Phocoena sinus (endemic, critically endangered)",NA
+15,Baleen Whales,BWH,"Blue whale (Balaenoptera musculus), Fin whale (Balaenoptera physalus), Humpback whale (Megaptera novaeangliae), Gray whale (Eschrichtius robustus), Bryde's whale (Balaenoptera edeni)",NA
+16,Toothed Whales,TWH,"Sperm whale (Physeter macrocephalus), Cuvier's beaked whale (Ziphius cavirostris), other beaked whales",NA
+17,Dolphins,DOL,"Common dolphin (Delphinus delphis), Bottlenose dolphin (Tursiops truncatus), Pacific white-sided dolphin (Lagenorhynchus obliquidens)",NA
+18,California Sea Lion,CSL,Zalophus californianus,NA
+19,Other Pinnipeds,OPI,"Guadalupe fur seal (Arctocephalus townsendi), Harbor seal (Phoca vitulina)",NA
+20,Loggerhead Turtle,TLH,Caretta caretta,NA
+21,Green Turtle,TGR,Chelonia mydas (black and green forms),NA
+22,Leatherback Turtle,TLB,Dermochelys coriacea,NA
+23,Olive Ridley Turtle,TOR,Lepidochelys olivacea,Lepidochelys kempii
+24,Piscivorous Seabirds,SBP,"Brown pelican (Pelecanus occidentalis), Cormorants (Phalacrocorax spp.), Magnificent frigatebird (Fregata magnificens)",NA
+25,Surface-feeding Seabirds,SBS,"Gulls (Larus spp.), Terns (Sterna spp.), Surface-feeding species",NA
+26,Diving Seabirds,SBD,"Boobies (Sula spp.), Brown booby (S. leucogaster), Blue-footed booby (S. nebouxii), Diving species",NA
+27,Great White Shark,GWS,Carcharodon carcharias,NA
+28,Hammerhead Sharks,HHS,"Scalloped hammerhead (Sphyrna lewini), Smooth hammerhead (Sphyrna zygaena), Great hammerhead (Sphyrna mokarran)",NA
+29,Large Coastal Sharks,LCS,"Bull shark (Carcharhinus leucas), Dusky shark (Carcharhinus obscurus)",Tiger shark (Galeocerdo cuvier)
+30,Small Coastal Sharks,SCS,"Sharpnose sharks (Rhizoprionodon spp.), Smoothhounds (Mustelus spp.), Small requiem sharks",NA
+31,Pelagic Sharks,PSH,"Blue shark (Prionace glauca), Shortfin mako (Isurus oxyrinchus), Thresher sharks (Alopias spp.)",NA
+32,Large Rays,LRA,"Giant manta ray (Mobula birostris), Devil rays (Mobula spp.), Bat rays (Myliobatis californica)",NA
+33,Guitarfish,GUI,"Rhinobatos productus, Pseudobatos leucorhynchus, other guitarfish",NA
+34,Skates,SKA,"Rajidae family, various skate species",NA
+35,Small Rays,SRA,"Stingrays (Urobatis spp., Hypanus spp.), Round rays, small ray species",NA
+36,Yellowfin Tuna,YFT,Thunnus albacares,NA
+37,Skipjack Tuna,SKJ,Katsuwonus pelamis,NA
+38,Other Tunas,OTU,"Bigeye tuna (Thunnus obesus), Albacore (Thunnus alalunga)",NA
+39,Billfish,BIL,"Blue marlin (Makaira nigricans), Striped marlin (Kajikia audax), Sailfish (Istiophorus platypterus), Swordfish (Xiphias gladius)",NA
+40,Dolphinfish,DOL,Coryphaena hippurus,NA
+41,Lanternfish and Deep,LAN,"Myctophidae, Stomiidae and Ogcocephalidae including lampfish, viperfish, and batfish, mesopelagic and bathypelagic species",
+42,Large Mackerels,LAM,"Acanthocybium solandri, Scomberomorus spp. (large mackerels)",NA
+43,Pacific Sardine,SAR,Sardinops sagax,NA
+44,Hake,HAK,Merluciidae,
+45,Northern Anchovy,ANC,Engraulis mordax,NA
+46,Pacific Mackerel,MAC,Scomber japonicus,NA
+47,Pacific Thread Herring,THR,Opisthonema libertate,NA
+48,Other Small Pelagics,OSP,"Sardinella spp., other clupeids and engraulids",NA
+49,Leopard Grouper,LGR,Mycteroperca rosacea,NA
+50,Other Groupers,OGR,"Gulf grouper (Mycteroperca jordani), Broomtail grouper (Mycteroperca xenarcha), other serranids",NA
+51,Snappers,SNA,"Pacific red snapper (Lutjanus peru), Spotted rose snapper (Lutjanus guttatus), Yellow snapper (Lutjanus argentiventris)",NA
+52,Small snappers,OSN,"Other lutjanids, smaller snapper species",NA
+53,Parrotfish,PAR,"Scarus spp., Nicholsina denticulata",NA
+54,Surgeonfish,SUR,"Prionurus spp., Acanthurus spp.",NA
+55,Reef Herbivores,RHE,"Damselfish (Pomacentridae), Blennies (Blenniidae), Small herbivorous species",NA
+56,Reef Planktivores,RPL,"Chromis spp., small planktivorous pomacentrids, anthias",NA
+57,Reef Carnivores,RCA,"Wrasses (Labridae), Triggerfish (Balistidae), medium carnivorous reef species",NA
+58,Moray Eels,MEE,"Muraenidae family, various moray eel species",NA
+59,Reef Piscivores,RPI,"Cabrilla (Paralabrax spp.), large hawkfish, reef predators",NA
+60,Totoaba,TOT,"Totoaba macdonaldi (critically endangered, endemic)",NA
+61,Corvinas,COR,"Gulf corvina (Cynoscion othonopterus), Orangemouth corvina (Cynoscion xanthulus), White seabass (Atractoscion nobilis)",NA
+62,Flatfish,FLA,"Halibut (Paralichthys californicus), other flatfish (Pleuronectiformes)",NA
+63,Drums and croakers,CRO,"Shortfin corvina (Cynoscion parvipinnis), other sciaenids",NA
+64,Other Demersal Fish,ODF,"Mullet snappers, grunts (Haemulidae), other demersal species",NA
+65,Benthic Piscivores,BPI,"Scorpionfish (Scorpaenidae), other benthic piscivores",NA
+66,Lizardfish,LIZ,"Synodus spp., ambush predators",NA
+67,Mullets,MUL,"Mugil cephalus, Mugil curema, other mullet species",NA
+68,Needlefish and Halfbeaks,NEE,"Strongylura spp., Hemiramphidae",NA
+69,Coastal Planktivores,CPL,"Silversides (Atherinopsidae), small coastal planktivores",NA
+70,Jumbo Squid,JSQ,Dosidicus gigas,NA
+71,Other Squids,OSQ,"Market squid (Doryteuthis opalescens), other loliginids and ommastrephids",NA
+72,Octopus,OCT,"Two-spot octopus (Octopus bimaculatus), other octopods",Mexican four-eyed octopus (Octopus maya)
+73,Blue Shrimp,BSH,Litopenaeus stylirostris,NA
+74,Brown Shrimp,RSH,Farfantepenaeus californiensis,NA
+75,Other Peneid Shrimps,OSH,"Litopenaeus vannamei, other peneid shrimps",NA
+76,Spiny Lobster,LOB,Panulirus interruptus,Panulirus interruptus
+77,Swimming Crabs,SWC,"Callinectes spp., portunid crabs",NA
+78,Benthic Crabs,BEC,"Cancer spp., Grapsidae, other benthic crabs",NA
+79,Sea Cucumbers,SCU,"Isostichopus fuscus, Holothuroidea",NA
+80,Sea Urchins,SUR,Pencil urchin (Eucidaris thouarsii),Purple urchin (Strongylocentrotus purpuratus)
+81,Sea Stars,SST,"Phataria unifascialis, Asteroidea",NA
+82,Brittle Stars,BST,"Ophiuroidea, various brittle star species",NA
+83,Polychaete Worms,PWO,"Polychaeta, various families of marine worms",NA
+84,Gastropods,GAS,"Turbo spp., other gastropods, sea snails",NA
+85,Bivalves,BIV,"Chione spp., Argopecten spp., Crassostrea spp., oysters, clams, scallops",NA
+86,Other Benthic Invertebrates,OBI,"Amphipods, isopods, other small benthic invertebrates",NA
+87,Corals and Anemones,COR,"Corals (various species), anemones, cnidarians",NA
+88,Sponges and Tunicates,SPO,"Porifera, Tunicata, sessile filter feeders",NA

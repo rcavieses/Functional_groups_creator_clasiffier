@@ -1,0 +1,626 @@
+[
+  {
+    "group_id": "FG01",
+    "group_name": "Gulf Coney",
+    "description": "Large deepwater grouper (Serranidae) found at depths >45m, commercially important species in the Gulf of California known locally as baqueta",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "large",
+      "taxonomic_affinity": "Serranidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG02",
+    "group_name": "Extranjero",
+    "description": "Spotted sand bass and parrot sand bass (Serranidae), deepwater species occurring at >100m depth, also known as spotted sand bass",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "large",
+      "taxonomic_affinity": "Serranidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG03",
+    "group_name": "Leopard Grouper",
+    "description": "Leopard grouper (Mycteroperca rosacea), reef-associated serranid important for commercial and recreational fisheries",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "medium-large",
+      "taxonomic_affinity": "Serranidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG04",
+    "group_name": "Gulf Grouper",
+    "description": "Gulf grouper (Mycteroperca jordani), large endemic serranid, historically important but now depleted due to overfishing",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "large",
+      "taxonomic_affinity": "Serranidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG05",
+    "group_name": "Amarillo Snapper",
+    "description": "Amarillo snapper (Lutjanus argentiventris), reef-associated lutjanid found on rocky substrates",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "medium",
+      "taxonomic_affinity": "Lutjanidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG06",
+    "group_name": "Barred Pargo",
+    "description": "Barred pargo (Hoplopagrus guentherii), reef snapper important for artisanal fisheries",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "medium",
+      "taxonomic_affinity": "Lutjanidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG07",
+    "group_name": "Groupers and Snappers",
+    "description": "Aggregated group of 29 groupers (Serranidae) and 6 snappers (Lutjanidae) not elsewhere included, important predators on reef and rocky habitats",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "medium-large",
+      "taxonomic_affinity": "Serranidae/Lutjanidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG08",
+    "group_name": "Drums and Croakers",
+    "description": "29 species of drums and croakers (Sciaenidae) including corvinas, important commercial species in the northern gulf",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "medium",
+      "taxonomic_affinity": "Sciaenidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG09",
+    "group_name": "Grunts",
+    "description": "Haemulidae family including silvergray grunt, sargo, and related species, reef-associated benthic feeders",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "omnivore",
+      "size_class": "small-medium",
+      "taxonomic_affinity": "Haemulidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG10",
+    "group_name": "Herbivorous Fish",
+    "description": "Parrotfishes (Scaridae), rudderfishes, surgeonfishes and other herbivorous species that graze on algal communities",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "herbivore",
+      "size_class": "small-medium",
+      "taxonomic_affinity": "Scaridae/Acanthuridae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG11",
+    "group_name": "Large Reef Fish",
+    "description": "Aggregated group including snake eels, conger eels, triggerfishes, wrasses, cusk-eels, rockfishes, and other large reef-associated species",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "medium-large",
+      "taxonomic_affinity": "Perciformes"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG12",
+    "group_name": "Small Reef Fish",
+    "description": "Aggregated group of damselfishes, blennies, gobies, puffers, moray eels, angelfishes, and other small reef-associated species including bullseye pufferfish (botete)",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "omnivore",
+      "size_class": "small",
+      "taxonomic_affinity": "Perciformes"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG13",
+    "group_name": "Small Demersal Fish",
+    "description": "Small fish on soft substrate including gobies, sea catfishes, labrisomids, clingfishes, and other species occurring on sand and mud bottoms",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "small",
+      "taxonomic_affinity": "Perciformes/Siluriformes"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG14",
+    "group_name": "Pacific Angel Shark",
+    "description": "Squatina californica, nocturnal bottom-dwelling shark species important in artisanal fisheries",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "medium",
+      "taxonomic_affinity": "Squatinidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG15",
+    "group_name": "Small Migratory Sharks",
+    "description": "Smoothhounds (Mustelus spp.) including sharptooth, brown, sicklefin, and gray smoothhound that migrate seasonally into the gulf",
+    "characteristics": {
+      "habitat": "pelagic/demersal",
+      "trophic_level": "carnivore",
+      "size_class": "small-medium",
+      "taxonomic_affinity": "Triakidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG16",
+    "group_name": "Large Pelagic Sharks",
+    "description": "Large sharks including thresher sharks, hammerheads, bull shark, white shark, nurse shark, and mako shark, apex predators in the ecosystem",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "carnivore",
+      "size_class": "large",
+      "taxonomic_affinity": "Carcharhinidae/Sphyrnidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG17",
+    "group_name": "Guitarfish",
+    "description": "Rhinobatidae family including thornback, banded, and shovelnose guitarfish, commercially important in artisanal fisheries",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "medium",
+      "taxonomic_affinity": "Rhinobatidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG18",
+    "group_name": "Skates Rays and Sharks",
+    "description": "Aggregated group of 58 chondrichthyan species including eagle rays, stingrays, electric rays, butterfly rays, horn sharks, and skates",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "small-medium",
+      "taxonomic_affinity": "Rajidae/Mylobatidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG19",
+    "group_name": "Flatfish",
+    "description": "American soles, large-tooth flounders, lefteye flounders, righteye flounders, and tonguefishes, bottom-dwelling species on soft sediments",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "small-medium",
+      "taxonomic_affinity": "Pleuronectiformes"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG20",
+    "group_name": "Mojarra",
+    "description": "Gerreidae family including golden, Peruvian, and yellowfin mojarra, important forage fish in coastal and estuarine areas",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "omnivore",
+      "size_class": "small",
+      "taxonomic_affinity": "Gerreidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG21",
+    "group_name": "Scorpionfish",
+    "description": "Scorpaenidae and Triglidae families including searobins and scorpionfishes, reef and soft-bottom predators",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "small-medium",
+      "taxonomic_affinity": "Scorpaenidae/Triglidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG22",
+    "group_name": "Lanternfish and Deep",
+    "description": "Myctophidae, Stomiidae and Ogcocephalidae including lampfish, viperfish, and batfish, mesopelagic and bathypelagic species important in vertical energy transfer",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "carnivore",
+      "size_class": "small",
+      "taxonomic_affinity": "Myctophidae/Stomiidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG23",
+    "group_name": "Totoaba",
+    "description": "Totoaba macdonaldi, endemic critically endangered sciaenid, historically important but now protected species",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "large",
+      "taxonomic_affinity": "Sciaenidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG24",
+    "group_name": "Large Pelagics",
+    "description": "Tunas, jacks, dolphinfish, barracudas, and swordfish, migratory pelagic predators important for commercial and recreational fisheries",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "carnivore",
+      "size_class": "large",
+      "taxonomic_affinity": "Scombridae/Carangidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG25",
+    "group_name": "Mackerel",
+    "description": "Scomberomorus species including Gulf sierra and Pacific sierra, seasonally important commercial species",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "carnivore",
+      "size_class": "medium",
+      "taxonomic_affinity": "Scombridae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG26",
+    "group_name": "Hake",
+    "description": "Merlucciidae including Cortez hake and Panama hake, demersal predatory fish",
+    "characteristics": {
+      "habitat": "demersal",
+      "trophic_level": "carnivore",
+      "size_class": "medium",
+      "taxonomic_affinity": "Merlucciidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG27",
+    "group_name": "Small Pelagics",
+    "description": "Anchovies (Engraulidae), silversides (Atherinopsidae), and herrings (Clupeidae) including Pacific sardine, forage fish supporting the food web",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "planktivore",
+      "size_class": "small",
+      "taxonomic_affinity": "Clupeidae/Engraulidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG28",
+    "group_name": "Mysticeti",
+    "description": "Baleen whales including fin whale, gray whale, humpback whale, blue whale, and whale shark, filter-feeding cetaceans migrating seasonally through the gulf",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "filter_feeder",
+      "size_class": "very_large",
+      "taxonomic_affinity": "Mysticeti"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG29",
+    "group_name": "Odontocetae",
+    "description": "Toothed whales and dolphins including common dolphins, bottlenose dolphins, sperm whales, and beaked whales, important marine mammal predators",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "carnivore",
+      "size_class": "large",
+      "taxonomic_affinity": "Odontoceti"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG30",
+    "group_name": "Orca",
+    "description": "Killer whales (Orcinus orca), apex predators feeding on marine mammals, fish, and sea turtles",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "carnivore",
+      "size_class": "large",
+      "taxonomic_affinity": "Delphinidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG31",
+    "group_name": "Vaquita",
+    "description": "Phocoena sinus, endemic critically endangered porpoise restricted to the northern Gulf of California",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "carnivore",
+      "size_class": "medium",
+      "taxonomic_affinity": "Phocoenidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG32",
+    "group_name": "Pinnipeds",
+    "description": "California sea lion (Zalophus californianus) and harbor seals, marine mammal predators with colonies in the gulf islands",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "carnivore",
+      "size_class": "medium-large",
+      "taxonomic_affinity": "Carnivora"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG33",
+    "group_name": "Sea Turtles",
+    "description": "Green turtle, loggerhead, hawksbill, and olive ridley sea turtles, protected species using the gulf for feeding and nesting",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "omnivore",
+      "size_class": "medium",
+      "taxonomic_affinity": "Chelonia"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG34",
+    "group_name": "Seabirds",
+    "description": "Brown pelican, boobies, frigatebirds, cormorants, gulls, and terns that nest on gulf islands and feed on fish and invertebrates",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "carnivore",
+      "size_class": "small-medium",
+      "taxonomic_affinity": "Aves"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG35",
+    "group_name": "Penaeid Shrimp",
+    "description": "Brown shrimp, white shrimp, and blue shrimp (Penaeidae), commercially most valuable fishery in the Gulf of California",
+    "characteristics": {
+      "habitat": "benthic",
+      "trophic_level": "omnivore",
+      "size_class": "small",
+      "taxonomic_affinity": "Penaeidae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG36",
+    "group_name": "Crabs and Lobsters",
+    "description": "Blue crab (Callinectes bellicosus), swimming crabs, and spiny lobsters, important commercial invertebrates",
+    "characteristics": {
+      "habitat": "benthic",
+      "trophic_level": "omnivore",
+      "size_class": "small-medium",
+      "taxonomic_affinity": "Decapoda"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG37",
+    "group_name": "Cephalopods",
+    "description": "Squid and octopus species, important prey for marine mammals, large fish, and seabirds",
+    "characteristics": {
+      "habitat": "demersal/pelagic",
+      "trophic_level": "carnivore",
+      "size_class": "small-medium",
+      "taxonomic_affinity": "Cephalopoda"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG38",
+    "group_name": "Benthic Filter Feeders",
+    "description": "Bivalves, sponges, tunicates, and other sessile invertebrates that filter water for food particles",
+    "characteristics": {
+      "habitat": "benthic",
+      "trophic_level": "filter_feeder",
+      "size_class": "small",
+      "taxonomic_affinity": "Bivalvia/Porifera"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG39",
+    "group_name": "Benthic Carnivores",
+    "description": "Predatory polychaetes, nemerteans, and other carnivorous benthos feeding on infauna and epifauna",
+    "characteristics": {
+      "habitat": "benthic",
+      "trophic_level": "carnivore",
+      "size_class": "small",
+      "taxonomic_affinity": "Polychaeta"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG40",
+    "group_name": "Benthic Grazers",
+    "description": "Herbivorous gastropods, urchins, and other invertebrates that graze on microalgae and detritus",
+    "characteristics": {
+      "habitat": "benthic",
+      "trophic_level": "herbivore",
+      "size_class": "small",
+      "taxonomic_affinity": "Gastropoda/Echinoidea"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG41",
+    "group_name": "Macrozoobenthos Deposit Feeders",
+    "description": "Deposit-feeding polychaetes, holothurians, and other invertebrates processing sediment organic matter",
+    "characteristics": {
+      "habitat": "benthic",
+      "trophic_level": "detritivore",
+      "size_class": "small",
+      "taxonomic_affinity": "Polychaeta/Holothuroidea"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG42",
+    "group_name": "Macrozoobenthos Suspension Feeders",
+    "description": "Suspension-feeding polychaetes, bryozoans, and hydroids filtering particles from the water column",
+    "characteristics": {
+      "habitat": "benthic",
+      "trophic_level": "filter_feeder",
+      "size_class": "small",
+      "taxonomic_affinity": "Polychaeta/Bryozoa"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG43",
+    "group_name": "Large Zooplankton",
+    "description": "Copepods, euphausiids, chaetognaths, and other mesozooplankton >200 µm, key link between primary producers and fish",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "zooplankton",
+      "size_class": "small",
+      "taxonomic_affinity": "Copepoda/Euphausiacea"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG44",
+    "group_name": "Small Zooplankton",
+    "description": "Microzooplankton <200 µm including ciliates, flagellates, and copepod nauplii, grazing on phytoplankton",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "zooplankton",
+      "size_class": "small",
+      "taxonomic_affinity": "Ciliophora"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG45",
+    "group_name": "Jellyfish",
+    "description": "Gelatinous zooplankton including scyphozoans and hydrozoans, predators on zooplankton and fish larvae that can form blooms",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "carnivore",
+      "size_class": "small",
+      "taxonomic_affinity": "Scyphozoa/Hydrozoa"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG46",
+    "group_name": "Large Phytoplankton",
+    "description": "Diatoms and large dinoflagellates >20 µm, primary producers supporting the food web during upwelling events",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "primary_producer",
+      "size_class": "small",
+      "taxonomic_affinity": "Bacillariophyceae/Dinophyta"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG47",
+    "group_name": "Small Phytoplankton",
+    "description": "Nanoplankton and picoplankton <20 µm including cyanobacteria and small flagellates, dominant primary producers in oligotrophic waters",
+    "characteristics": {
+      "habitat": "pelagic",
+      "trophic_level": "primary_producer",
+      "size_class": "small",
+      "taxonomic_affinity": "Cyanobacteria"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG48",
+    "group_name": "Microphytobenthos",
+    "description": "Benthic diatoms and microalgae on the seafloor, important primary producers in shallow waters",
+    "characteristics": {
+      "habitat": "benthic",
+      "trophic_level": "primary_producer",
+      "size_class": "small",
+      "taxonomic_affinity": "Bacillariophyceae"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG49",
+    "group_name": "Macroalgae",
+    "description": "Seaweeds including kelps, red algae, and green algae providing habitat structure and primary production",
+    "characteristics": {
+      "habitat": "benthic",
+      "trophic_level": "primary_producer",
+      "size_class": "medium",
+      "taxonomic_affinity": "Phaeophyta/Rhodophyta"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG50",
+    "group_name": "Seagrass",
+    "description": "Zostera marina and other seagrasses forming important coastal habitats and nursery areas in the Colorado River delta region",
+    "characteristics": {
+      "habitat": "benthic",
+      "trophic_level": "primary_producer",
+      "size_class": "medium",
+      "taxonomic_affinity": "Tracheophyta"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG51",
+    "group_name": "Detritus",
+    "description": "Particulate organic matter from dead organisms and fecal material, important food source for deposit feeders and bacteria",
+    "characteristics": {
+      "habitat": "benthic",
+      "trophic_level": "detritus",
+      "size_class": "small",
+      "taxonomic_affinity": "non-living"
+    },
+    "species": []
+  },
+  {
+    "group_id": "FG52",
+    "group_name": "Bacteria",
+    "description": "Heterotrophic bacteria decomposing organic matter and recycling nutrients through the microbial loop",
+    "characteristics": {
+      "habitat": "benthic/pelagic",
+      "trophic_level": "decomposer",
+      "size_class": "small",
+      "taxonomic_affinity": "Bacteria"
+    },
+    "species": []
+  }
+]

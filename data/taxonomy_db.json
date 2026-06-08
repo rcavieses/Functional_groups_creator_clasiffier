@@ -1,0 +1,146 @@
+{
+  "taxonomy_base": {
+    "bacillaria": {
+      "habitat": "pelagic",
+      "trophic_level": "producer",
+      "size_class": "very_small",
+      "taxonomic_affinity": "Bacillariophyceae",
+      "confidence": 0.95
+    },
+    "ceratium": {
+      "habitat": "pelagic",
+      "trophic_level": "producer",
+      "size_class": "very_small",
+      "taxonomic_affinity": "Dinophyceae",
+      "confidence": 0.95
+    },
+    "chaetoceros": {
+      "habitat": "pelagic",
+      "trophic_level": "producer",
+      "size_class": "very_small",
+      "taxonomic_affinity": "Bacillariophyceae",
+      "confidence": 0.95
+    },
+    "amphora": {
+      "habitat": "benthic",
+      "trophic_level": "producer",
+      "size_class": "very_small",
+      "taxonomic_affinity": "Bacillariophyceae",
+      "confidence": 0.90
+    },
+    "cocconeis": {
+      "habitat": "benthic",
+      "trophic_level": "producer",
+      "size_class": "very_small",
+      "taxonomic_affinity": "Bacillariophyceae",
+      "confidence": 0.90
+    },
+    "acanthurus": {
+      "habitat": "reef",
+      "trophic_level": "herbivore",
+      "size_class": "medium",
+      "taxonomic_affinity": "Acanthuridae",
+      "confidence": 0.92
+    },
+    "caranx": {
+      "habitat": "pelagic",
+      "trophic_level": "carnivore",
+      "size_class": "large",
+      "taxonomic_affinity": "Carangidae",
+      "confidence": 0.90
+    },
+    "balaenoptera": {
+      "habitat": "pelagic",
+      "trophic_level": "filter_feeder",
+      "size_class": "very_large",
+      "taxonomic_affinity": "Balaenopteridae",
+      "confidence": 0.95
+    },
+    "anadara": {
+      "habitat": "benthic",
+      "trophic_level": "filter_feeder",
+      "size_class": "small",
+      "taxonomic_affinity": "Bivalvia",
+      "confidence": 0.90
+    },
+    "holothurian": {
+      "habitat": "benthic",
+      "trophic_level": "detritivore",
+      "size_class": "medium",
+      "taxonomic_affinity": "Holothuroidea",
+      "confidence": 0.85
+    },
+    "penaeus": {
+      "habitat": "benthic",
+      "trophic_level": "omnivore",
+      "size_class": "small",
+      "taxonomic_affinity": "Penaeidae",
+      "confidence": 0.92
+    },
+    "porites": {
+      "habitat": "reef",
+      "trophic_level": "mixotroph",
+      "size_class": "colonial",
+      "taxonomic_affinity": "Scleractinia",
+      "confidence": 0.90
+    },
+    "birds": {
+      "habitat": "aerial",
+      "trophic_level": "carnivore",
+      "size_class": "small-medium",
+      "taxonomic_affinity": "Aves",
+      "confidence": 0.85
+    },
+    "rodent": {
+      "habitat": "terrestrial",
+      "trophic_level": "omnivore",
+      "size_class": "very_small",
+      "taxonomic_affinity": "Mammalia",
+      "confidence": 0.80
+    },
+    "insect": {
+      "habitat": "mixed",
+      "trophic_level": "mixed",
+      "size_class": "very_small",
+      "taxonomic_affinity": "Arthropoda",
+      "confidence": 0.70
+    }
+  },
+  "habitat_keywords": {
+    "pelagic": ["bacillaria", "ceratium", "chaetoceros", "copepoda", "caranx", "tuna", "fish", "whale", "dolphin", "pteropod", "siphonophore"],
+    "benthic": ["amphora", "cocconeis", "bivalvia", "bivalve", "mussel", "clam", "oyster", "scallop", "holothurian", "cucumber", "echinoid", "urchin", "crab", "shrimp"],
+    "reef": ["acanthurus", "surgeonfish", "parrotfish", "grouper", "snapper", "damselfish", "wrasse"],
+    "terrestrial": ["bird", "insect", "plant", "rodent", "mammal", "reptile", "amphibian"],
+    "freshwater": ["daphnia", "hydra", "cladocera"],
+    "aerial": ["bird", "insect", "bat"]
+  },
+  "trophic_keywords": {
+    "producer": ["diatom", "bacillaria", "phytoplankton", "algae", "plant", "seaweed"],
+    "filter_feeder": ["bivalvia", "bivalve", "copepod", "pteropod", "barnacle", "whale", "manta"],
+    "herbivore": ["acanthurus", "surgeonfish", "parrotfish", "sea_urchin", "manatee"],
+    "detritivore": ["holothurian", "sea_cucumber", "detritus", "sediment"],
+    "omnivore": ["shrimp", "crab", "lobster", "scallop"],
+    "carnivore": ["fish", "shark", "grouper", "snapper", "squid", "octopus", "dolphin", "seal", "bird", "predator"],
+    "planktivore": ["anchovy", "herring", "sardine", "small_fish"],
+    "mixotroph": ["coral", "anemone", "dinoflagellate"]
+  },
+  "size_keywords": {
+    "very_small": ["diatom", "copepod", "nauplius", "larva", "egg"],
+    "small": ["anchovy", "herring", "shrimp", "small_fish", "small_crustacean"],
+    "medium": ["fish", "grouper", "snapper", "jack", "squid", "octopus"],
+    "large": ["tuna", "billfish", "large_fish", "large_shark", "large_rays"],
+    "very_large": ["whale", "giant_squid", "whale_shark", "manta"]
+  },
+  "taxonomic_patterns": {
+    "family": "idae",
+    "order": "iformes",
+    "class_fish": ["ichthyes"],
+    "class_crust": ["crustacea"],
+    "class_moll": ["gastropoda", "cephalopoda", "bivalvia"],
+    "class_echino": ["echinoidea", "holothuroidea", "asteroidea"],
+    "class_bird": ["aves"],
+    "class_mammal": ["mammalia"],
+    "phylum_diatom": ["bacillariophyceae"],
+    "phylum_dino": ["dinophyceae"]
+  }
+}

@@ -1,0 +1,53 @@
+group_id,group_name,description,habitat,trophic_level,size_class,taxonomic_affinity
+FG01,Gulf Coney,"Large deepwater grouper (Serranidae) found at depths >45m, commercially important species in the Gulf of California known locally as baqueta",demersal,carnivore,large,Serranidae
+FG02,Extranjero,"Spotted sand bass and parrot sand bass (Serranidae), deepwater species occurring at >100m depth, also known as spotted sand bass",demersal,carnivore,large,Serranidae
+FG03,Leopard Grouper,"Leopard grouper (Mycteroperca rosacea), reef-associated serranid important for commercial and recreational fisheries",demersal,carnivore,medium-large,Serranidae
+FG04,Gulf Grouper,"Gulf grouper (Mycteroperca jordani), large endemic serranid, historically important but now depleted due to overfishing",demersal,carnivore,large,Serranidae
+FG05,Amarillo Snapper,"Amarillo snapper (Lutjanus argentiventris), reef-associated lutjanid found on rocky substrates",demersal,carnivore,medium,Lutjanidae
+FG06,Barred Pargo,"Barred pargo (Hoplopagrus guentherii), reef snapper important for artisanal fisheries",demersal,carnivore,medium,Lutjanidae
+FG07,Groupers and Snappers,"Aggregated group of 29 groupers (Serranidae) and 6 snappers (Lutjanidae) not elsewhere included, important predators on reef and rocky habitats",demersal,carnivore,medium-large,Serranidae/Lutjanidae
+FG08,Drums and Croakers,"29 species of drums and croakers (Sciaenidae) including corvinas, important commercial species in the northern gulf",demersal,carnivore,medium,Sciaenidae
+FG09,Grunts,"Haemulidae family including silvergray grunt, sargo, and related species, reef-associated benthic feeders",demersal,omnivore,small-medium,Haemulidae
+FG10,Herbivorous Fish,"Parrotfishes (Scaridae), rudderfishes, surgeonfishes and other herbivorous species that graze on algal communities",demersal,herbivore,small-medium,Scaridae/Acanthuridae
+FG11,Large Reef Fish,"Aggregated group including snake eels, conger eels, triggerfishes, wrasses, cusk-eels, rockfishes, and other large reef-associated species",demersal,carnivore,medium-large,Perciformes
+FG12,Small Reef Fish,"Aggregated group of damselfishes, blennies, gobies, puffers, moray eels, angelfishes, and other small reef-associated species including bullseye pufferfish (botete)",demersal,omnivore,small,Perciformes
+FG13,Small Demersal Fish,"Small fish on soft substrate including gobies, sea catfishes, labrisomids, clingfishes, and other species occurring on sand and mud bottoms",demersal,carnivore,small,Perciformes/Siluriformes
+FG14,Pacific Angel Shark,"Squatina californica, nocturnal bottom-dwelling shark species important in artisanal fisheries",demersal,carnivore,medium,Squatinidae
+FG15,Small Migratory Sharks,"Smoothhounds (Mustelus spp.) including sharptooth, brown, sicklefin, and gray smoothhound that migrate seasonally into the gulf",pelagic/demersal,carnivore,small-medium,Triakidae
+FG16,Large Pelagic Sharks,"Large sharks including thresher sharks, hammerheads, bull shark, white shark, nurse shark, and mako shark, apex predators in the ecosystem",pelagic,carnivore,large,Carcharhinidae/Sphyrnidae
+FG17,Guitarfish,"Rhinobatidae family including thornback, banded, and shovelnose guitarfish, commercially important in artisanal fisheries",demersal,carnivore,medium,Rhinobatidae
+FG18,Skates Rays and Sharks,"Aggregated group of 58 chondrichthyan species including eagle rays, stingrays, electric rays, butterfly rays, horn sharks, and skates",demersal,carnivore,small-medium,Rajidae/Mylobatidae
+FG19,Flatfish,"American soles, large-tooth flounders, lefteye flounders, righteye flounders, and tonguefishes, bottom-dwelling species on soft sediments",demersal,carnivore,small-medium,Pleuronectiformes
+FG20,Mojarra,"Gerreidae family including golden, Peruvian, and yellowfin mojarra, important forage fish in coastal and estuarine areas",demersal,omnivore,small,Gerreidae
+FG21,Scorpionfish,"Scorpaenidae and Triglidae families including searobins and scorpionfishes, reef and soft-bottom predators",demersal,carnivore,small-medium,Scorpaenidae/Triglidae
+FG22,Lanternfish and Deep,"Myctophidae, Stomiidae and Ogcocephalidae including lampfish, viperfish, and batfish, mesopelagic and bathypelagic species important in vertical energy transfer",pelagic,carnivore,small,Myctophidae/Stomiidae
+FG23,Totoaba,"Totoaba macdonaldi, endemic critically endangered sciaenid, historically important but now protected species",demersal,carnivore,large,Sciaenidae
+FG24,Large Pelagics,"Tunas, jacks, dolphinfish, barracudas, and swordfish, migratory pelagic predators important for commercial and recreational fisheries",pelagic,carnivore,large,Scombridae/Carangidae
+FG25,Mackerel,"Scomberomorus species including Gulf sierra and Pacific sierra, seasonally important commercial species",pelagic,carnivore,medium,Scombridae
+FG26,Hake,"Merlucciidae including Cortez hake and Panama hake, demersal predatory fish",demersal,carnivore,medium,Merlucciidae
+FG27,Small Pelagics,"Anchovies (Engraulidae), silversides (Atherinopsidae), and herrings (Clupeidae) including Pacific sardine, forage fish supporting the food web",pelagic,planktivore,small,Clupeidae/Engraulidae
+FG28,Mysticeti,"Baleen whales including fin whale, gray whale, humpback whale, blue whale, and whale shark, filter-feeding cetaceans migrating seasonally through the gulf",pelagic,filter_feeder,very_large,Mysticeti
+FG29,Odontocetae,"Toothed whales and dolphins including common dolphins, bottlenose dolphins, sperm whales, and beaked whales, important marine mammal predators",pelagic,carnivore,large,Odontoceti
+FG30,Orca,"Killer whales (Orcinus orca), apex predators feeding on marine mammals, fish, and sea turtles",pelagic,carnivore,large,Delphinidae
+FG31,Vaquita,"Phocoena sinus, endemic critically endangered porpoise restricted to the northern Gulf of California",pelagic,carnivore,medium,Phocoenidae
+FG32,Pinnipeds,"California sea lion (Zalophus californianus) and harbor seals, marine mammal predators with colonies in the gulf islands",pelagic,carnivore,medium-large,Carnivora
+FG33,Sea Turtles,"Green turtle, loggerhead, hawksbill, and olive ridley sea turtles, protected species using the gulf for feeding and nesting",pelagic,omnivore,medium,Chelonia
+FG34,Seabirds,"Brown pelican, boobies, frigatebirds, cormorants, gulls, and terns that nest on gulf islands and feed on fish and invertebrates",pelagic,carnivore,small-medium,Aves
+FG35,Penaeid Shrimp,"Brown shrimp, white shrimp, and blue shrimp (Penaeidae), commercially most valuable fishery in the Gulf of California",benthic,omnivore,small,Penaeidae
+FG36,Crabs and Lobsters,"Blue crab (Callinectes bellicosus), swimming crabs, and spiny lobsters, important commercial invertebrates",benthic,omnivore,small-medium,Decapoda
+FG37,Cephalopods,"Squid and octopus species, important prey for marine mammals, large fish, and seabirds",demersal/pelagic,carnivore,small-medium,Cephalopoda
+FG38,Benthic Filter Feeders,"Bivalves, sponges, tunicates, and other sessile invertebrates that filter water for food particles",benthic,filter_feeder,small,Bivalvia/Porifera
+FG39,Benthic Carnivores,"Predatory polychaetes, nemerteans, and other carnivorous benthos feeding on infauna and epifauna",benthic,carnivore,small,Polychaeta
+FG40,Benthic Grazers,"Herbivorous gastropods, urchins, and other invertebrates that graze on microalgae and detritus",benthic,herbivore,small,Gastropoda/Echinoidea
+FG41,Macrozoobenthos Deposit Feeders,"Deposit-feeding polychaetes, holothurians, and other invertebrates processing sediment organic matter",benthic,detritivore,small,Polychaeta/Holothuroidea
+FG42,Macrozoobenthos Suspension Feeders,"Suspension-feeding polychaetes, bryozoans, and hydroids filtering particles from the water column",benthic,filter_feeder,small,Polychaeta/Bryozoa
+FG43,Large Zooplankton,"Copepods, euphausiids, chaetognaths, and other mesozooplankton >200 µm, key link between primary producers and fish",pelagic,zooplankton,small,Copepoda/Euphausiacea
+FG44,Small Zooplankton,"Microzooplankton <200 µm including ciliates, flagellates, and copepod nauplii, grazing on phytoplankton",pelagic,zooplankton,small,Ciliophora
+FG45,Jellyfish,"Gelatinous zooplankton including scyphozoans and hydrozoans, predators on zooplankton and fish larvae that can form blooms",pelagic,carnivore,small,Scyphozoa/Hydrozoa
+FG46,Large Phytoplankton,"Diatoms and large dinoflagellates >20 µm, primary producers supporting the food web during upwelling events",pelagic,primary_producer,small,Bacillariophyceae/Dinophyta
+FG47,Small Phytoplankton,"Nanoplankton and picoplankton <20 µm including cyanobacteria and small flagellates, dominant primary producers in oligotrophic waters",pelagic,primary_producer,small,Cyanobacteria
+FG48,Microphytobenthos,"Benthic diatoms and microalgae on the seafloor, important primary producers in shallow waters",benthic,primary_producer,small,Bacillariophyceae
+FG49,Macroalgae,"Seaweeds including kelps, red algae, and green algae providing habitat structure and primary production",benthic,primary_producer,medium,Phaeophyta/Rhodophyta
+FG50,Seagrass,Zostera marina and other seagrasses forming important coastal habitats and nursery areas in the Colorado River delta region,benthic,primary_producer,medium,Tracheophyta
+FG51,Detritus,"Particulate organic matter from dead organisms and fecal material, important food source for deposit feeders and bacteria",benthic,detritus,small,non-living
+FG52,Bacteria,Heterotrophic bacteria decomposing organic matter and recycling nutrients through the microbial loop,benthic/pelagic,decomposer,small,Bacteria

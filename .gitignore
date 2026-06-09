@@ -38,3 +38,6 @@ secrets
 secrets.txt
 firebase-credentials.json
 output/expert_credentials.csv
+
+# Streamlit secrets (contienen credenciales)
+.streamlit/secrets.toml

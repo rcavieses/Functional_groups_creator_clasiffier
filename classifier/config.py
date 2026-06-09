@@ -10,10 +10,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # ─── Load environment variables from .env ──────────────────────────
-load_dotenv(Path(__file__).parent / ".env", override=True)
+# .env está en la raíz del proyecto (un nivel arriba de classifier/)
+load_dotenv(Path(__file__).parent.parent / ".env", override=True)
 
 # ─── Project paths ───────────────────────────────────────────────
-PROJECT_DIR = Path(__file__).parent
+# data/ y output/ están en la raíz del proyecto
+PROJECT_DIR = Path(__file__).parent.parent
 DATA_DIR = PROJECT_DIR / "data"
 OUTPUT_DIR = PROJECT_DIR / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)

@@ -320,13 +320,24 @@ def classify_all(
     all_results: list[dict] = []
     if (resume or rerun_low) and output_csv.exists():
         existing_df = pd.read_csv(output_csv)
-        if out_key in existing_df.columns:
+        existing_key = None
+        for k in ("species_name", "genus_name"):
+            if k in existing_df.columns:
+                existing_key = k
+                break
+        if existing_key and existing_key != out_key:
+            print(
+                f"[Warning] Existing output uses key '{existing_key}' but current mode expects '{out_key}'. "
+                f"Ignoring old output and starting fresh. Use --no-resume to suppress this warning."
+            )
+        elif out_key in existing_df.columns:
             if rerun_low:
                 # Keep high/medium confidence; re-classify low-confidence taxa
-                keep_df = existing_df[existing_df.get("confidence", pd.Series(dtype=str)) != "low"]
+                conf_col = existing_df["confidence"] if "confidence" in existing_df.columns else pd.Series(dtype=str)
+                keep_df = existing_df[conf_col != "low"]
                 already_done = set(keep_df[out_key].dropna().str.strip())
                 all_results = keep_df.to_dict("records")
-                n_rerun = int((existing_df.get("confidence", pd.Series(dtype=str)) == "low").sum())
+                n_rerun = int((conf_col == "low").sum())
                 print(f"[Rerun-low] {len(already_done)} taxa kept (high/medium) | "
                       f"{n_rerun} low-confidence taxa will be re-classified with reasoning.")
             else:
@@ -346,8 +357,9 @@ def classify_all(
     if streaming and workers > 1:
         print("[Warning] streaming + workers > 1 will interleave output. Consider --workers 1 with --stream.")
 
+    mode_label = "genus" if (by_genus and taxon_col == "genus") else "species"
     model_info = CLAUDE_MODEL if provider == "anthropic" else OLLAMA_MODEL
-    print(f"[Classify] {total} taxa | {total_batches} batches × {batch_size} | "
+    print(f"[Classify] mode: {mode_label} | {total} taxa | {total_batches} batches × {batch_size} | "
           f"provider: {provider} | model: {model_info} | workers: {workers} | "
           f"reasoning: {include_reasoning} | stream: {streaming}\n")
 

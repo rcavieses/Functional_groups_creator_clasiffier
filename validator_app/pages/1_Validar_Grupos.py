@@ -9,7 +9,9 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 import streamlit as st
 import pandas as pd
 from firebase_client import (
+    expert_name_from_auth,
     get_db,
+    load_species,
     get_species_for_group,
     get_groups_summary,
     get_removed_species,
@@ -26,11 +28,11 @@ GROUPS_CSV = DATA_DIR / "functional_groups_final.csv"
 st.set_page_config(page_title="Validar Grupos", page_icon="✅", layout="wide")
 
 # ── Auth guard ─────────────────────────────────────────────────────────────────
-if not st.session_state.get("expert_name"):
-    st.warning("⚠️ Debes identificarte primero. Ve a la página de **Inicio**.")
+if not st.session_state.get("auth"):
+    st.warning("⚠️ Debes iniciar sesión primero. Ve a la página de **Inicio**.")
     st.stop()
 
-expert = st.session_state.expert_name
+expert = expert_name_from_auth(st.session_state.auth)
 db = get_db()
 
 
@@ -116,8 +118,9 @@ with st.sidebar:
     st.divider()
     st.subheader("Grupos Funcionales")
 
-    if st.button("🔄 Actualizar datos", use_container_width=True):
-        st.cache_data.clear()
+    if st.button("🔄 Recargar desde Firebase", use_container_width=True,
+                 help="Recarga todos los datos (usa ~5000 lecturas). Solo necesario para ver cambios de otros expertos."):
+        load_species(db, force=True)
         st.rerun()
 
     filter_opt = st.radio(
@@ -126,8 +129,8 @@ with st.sidebar:
         horizontal=True,
     )
 
-    with st.spinner("Cargando resumen…"):
-        summary = get_groups_summary(db)
+    # Summary computed from in-memory cache — zero Firestore reads
+    summary = get_groups_summary(db)
 
     if "selected_group" not in st.session_state:
         st.session_state.selected_group = list(nav_groups.keys())[0]

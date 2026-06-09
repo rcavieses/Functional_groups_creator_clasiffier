@@ -16,7 +16,14 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 import streamlit as st
-from firebase_client import get_db, is_imported, import_classifications, get_all_species
+from firebase_client import (
+    get_db,
+    is_imported,
+    import_classifications,
+    load_species,
+    sign_in,
+    expert_name_from_auth,
+)
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 OUTPUT_DIR = Path(__file__).parent.parent / "output"
@@ -30,44 +37,55 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Session state ──────────────────────────────────────────────────────────────
-if "expert_name" not in st.session_state:
-    st.session_state.expert_name = ""
-if "db_imported" not in st.session_state:
-    st.session_state.db_imported = False
+# ── Session state defaults ─────────────────────────────────────────────────────
+st.session_state.setdefault("auth", None)
+st.session_state.setdefault("expert_name", "")
+st.session_state.setdefault("db_imported", False)
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.title("🐟 Validación de Grupos Funcionales")
 st.caption("Golfo de California · Modelo ATLANTIS · Validación por expertos")
 
 # ── Login ──────────────────────────────────────────────────────────────────────
-if not st.session_state.expert_name:
-    st.markdown("### Identifícate para comenzar")
+if not st.session_state.auth:
+    st.markdown("### Iniciar sesión")
     st.info(
-        "Cada cambio que realices — quitar una especie, moverla o proponer "
-        "un grupo nuevo — quedará registrado con tu nombre en la base de datos."
+        "Usa el correo electrónico con el que fuiste registrado en el proyecto. "
+        "Todos los cambios quedarán registrados con tu nombre."
     )
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        name = st.text_input(
-            "Tu nombre completo:",
-            placeholder="Ej. María García López",
-            key="name_input",
-        )
-    with col2:
-        st.write("")
-        st.write("")
-        if st.button("✅ Entrar", type="primary", disabled=not name.strip()):
-            st.session_state.expert_name = name.strip()
-            st.rerun()
+
+    with st.form("login_form", clear_on_submit=False):
+        email = st.text_input("Correo electrónico:", placeholder="tu@correo.com")
+        password = st.text_input("Contraseña:", type="password")
+        submitted = st.form_submit_button("🔐 Iniciar sesión", type="primary", use_container_width=True)
+
+    if submitted:
+        if not email.strip() or not password:
+            st.error("Ingresa correo y contraseña.")
+        else:
+            with st.spinner("Verificando…"):
+                try:
+                    auth = sign_in(email.strip(), password)
+                    st.session_state.auth = auth
+                    st.session_state.expert_name = expert_name_from_auth(auth)
+                    st.rerun()
+                except ValueError as e:
+                    st.error(str(e))
     st.stop()
 
 # ── Active session header ──────────────────────────────────────────────────────
-col_user, _, col_logout = st.columns([3, 4, 1])
-col_user.success(f"👤 Experto activo: **{st.session_state.expert_name}**")
+auth = st.session_state.auth
+col_user, _, col_logout = st.columns([4, 3, 1])
+col_user.success(
+    f"👤 **{st.session_state.expert_name}** · {auth.get('email', '')}"
+)
 with col_logout:
     if st.button("Cerrar sesión"):
+        st.session_state.auth = None
         st.session_state.expert_name = ""
+        st.session_state.db_imported = False
+        if "_species_df" in st.session_state:
+            del st.session_state["_species_df"]
         st.rerun()
 
 st.markdown("---")
@@ -79,7 +97,7 @@ if not st.session_state.db_imported:
     if not is_imported(db):
         if not CLASSIFIED_CSV.exists():
             st.error(
-                f"No se encontró el archivo clasificado:\n`{CLASSIFIED_CSV}`\n\n"
+                f"No se encontró el archivo clasificado: `{CLASSIFIED_CSV}`\n\n"
                 "Ejecuta primero el script de clasificación:\n"
                 "```\npython classify_species.py --input data/final_taxonomy_occ.csv "
                 "--by-genus --provider anthropic --no-reasoning\n```"
@@ -91,8 +109,12 @@ if not st.session_state.db_imported:
     st.session_state.db_imported = True
 
 # ── Stats dashboard ────────────────────────────────────────────────────────────
+force_reload = st.button(
+    "🔄 Recargar datos desde Firebase",
+    help="Solo necesario para ver cambios recientes de otros expertos.",
+)
 with st.spinner("Cargando estadísticas…"):
-    df = get_all_species(db)
+    df = load_species(db, force=force_reload)
 
 if df.empty:
     st.warning("No hay datos en Firebase.")
@@ -113,8 +135,6 @@ c4.metric("🗑 Removidos", f"{removed:,}")
 st.progress(pct, text=f"Progreso de validación: {pct:.1%}")
 
 st.markdown("---")
-
-# ── Navigation guide ───────────────────────────────────────────────────────────
 st.markdown(
     "### ¿Por dónde empezar?\n\n"
     "Usa el menú lateral izquierdo para navegar entre las páginas:\n\n"

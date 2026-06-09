@@ -37,3 +37,4 @@ output/
 secrets
 secrets.txt
 firebase-credentials.json
+output/expert_credentials.csv

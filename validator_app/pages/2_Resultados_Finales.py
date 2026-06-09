@@ -10,7 +10,7 @@ import streamlit as st
 import pandas as pd
 from firebase_client import (
     get_db,
-    get_all_species,
+    load_species,
     get_proposed_groups,
     get_audit_log,
     get_removed_species,
@@ -18,8 +18,8 @@ from firebase_client import (
 
 st.set_page_config(page_title="Resultados Finales", page_icon="📊", layout="wide")
 
-if not st.session_state.get("expert_name"):
-    st.warning("⚠️ Debes identificarte primero. Ve a la página de **Inicio**.")
+if not st.session_state.get("auth"):
+    st.warning("⚠️ Debes iniciar sesión primero. Ve a la página de **Inicio**.")
     st.stop()
 
 db = get_db()
@@ -29,20 +29,22 @@ st.caption("Vista consolidada de la validación por expertos")
 
 col_refresh, _ = st.columns([1, 5])
 with col_refresh:
-    if st.button("🔄 Actualizar", use_container_width=True):
+    if st.button("🔄 Recargar desde Firebase", use_container_width=True,
+                 help="Vuelve a leer Firestore (~5000 lecturas). Solo si necesitas ver cambios de otros expertos."):
+        load_species(db, force=True)
         st.rerun()
 
-# ── Load data ──────────────────────────────────────────────────────────────────
+# ── Load data (from in-memory cache) ──────────────────────────────────────────
 with st.spinner("Cargando datos…"):
-    all_df = get_all_species(db)
+    all_df = load_species(db)
     proposed = get_proposed_groups(db)
 
 if all_df.empty:
     st.warning("No hay datos en Firebase.")
     st.stop()
 
-active = all_df[all_df["status"] != "removed"].copy()
-removed_df = all_df[all_df["status"] == "removed"].copy()
+active = all_df[all_df["status"] != "removed"].copy() if not all_df.empty else pd.DataFrame()
+removed_df = all_df[all_df["status"] == "removed"].copy() if not all_df.empty else pd.DataFrame()
 validated = active[active["status"] == "validated"]
 total = len(active)
 pct = len(validated) / max(total, 1)

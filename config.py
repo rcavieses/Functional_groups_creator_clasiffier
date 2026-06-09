@@ -38,6 +38,10 @@ LLM_TEMPERATURE = 0.3  # Lower temperature for consistency in classification
 OLLAMA_TIMEOUT = 600  # Timeout in seconds (increased for slower hardware)
 LLM_STREAMING = os.environ.get("LLM_STREAMING", "1").lower() in ("1", "true", "yes")  # Show tokens in real-time
 
+# ─── Anthropic / Claude API ────────────────────────────────────────────────────
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-haiku-4-5")
+
 # ─── Scoring criteria for group importance ──────────────────
 # Each criterion has a weight and description.
 # Total group score = weighted sum of all criteria.

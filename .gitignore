@@ -34,3 +34,6 @@ output/
 
 # Claude Code
 .claude/
+secrets
+secrets.txt
+firebase-credentials.json

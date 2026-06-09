@@ -66,38 +66,49 @@ def _get_secret(key: str, default: str = "") -> str:
 
 @st.cache_resource
 def get_db():
-    if not firebase_admin._apps:
-        cred = None
+    if firebase_admin._apps:
+        return firestore.client()
 
-        # 1. Local file (dev)
-        if CREDS_FILE.exists():
-            cred = credentials.Certificate(str(CREDS_FILE))
+    cred = None
+    errors: list[str] = []
 
-        # 2. st.secrets as dict (Streamlit Cloud)
-        if cred is None:
+    # 1. st.secrets (local .streamlit/secrets.toml y Streamlit Cloud)
+    try:
+        sa = st.secrets.get("FIREBASE_SERVICE_ACCOUNT")
+        if sa:
+            # AttrDict → dict plano vía JSON para que Certificate() lo acepte
+            sa_dict = json.loads(json.dumps(dict(sa)))
+            cred = credentials.Certificate(sa_dict)
+    except Exception as e:
+        errors.append(f"secrets.toml: {e}")
+
+    # 2. Archivo local firebase-credentials.json
+    if cred is None:
+        try:
+            if CREDS_FILE.exists():
+                cred = credentials.Certificate(str(CREDS_FILE))
+        except Exception as e:
+            errors.append(f"credentials file: {e}")
+
+    # 3. Variable de entorno como JSON string
+    if cred is None:
+        env_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT", "")
+        if env_json:
             try:
-                sa = st.secrets.get("FIREBASE_SERVICE_ACCOUNT")
-                if sa:
-                    cred = credentials.Certificate(dict(sa))
-            except Exception:
-                pass
-
-        # 3. Env var as JSON string
-        if cred is None:
-            env_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT", "")
-            if env_json:
                 cred = credentials.Certificate(json.loads(env_json))
+            except Exception as e:
+                errors.append(f"env var: {e}")
 
-        if cred is None:
-            st.error(
-                "❌ Credenciales de Firebase no encontradas.\n\n"
-                "**Local:** coloca `firebase-credentials.json` en la raíz del proyecto "
-                "o agrega `FIREBASE_SERVICE_ACCOUNT` a `.env`.\n\n"
-                "**Streamlit Cloud:** agrega `[FIREBASE_SERVICE_ACCOUNT]` en los Secrets del dashboard."
-            )
-            st.stop()
+    if cred is None:
+        detail = "\n\n" + " | ".join(errors) if errors else ""
+        st.error(
+            "❌ Credenciales de Firebase no encontradas." + detail + "\n\n"
+            "**Local:** configura `.streamlit/secrets.toml` con `[FIREBASE_SERVICE_ACCOUNT]`.\n\n"
+            "**Streamlit Cloud:** agrega los secrets en el dashboard del proyecto."
+        )
+        st.stop()
 
-        firebase_admin.initialize_app(cred)
+    firebase_admin.initialize_app(cred)
     return firestore.client()
 
 

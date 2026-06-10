@@ -1,0 +1,28 @@
+[theme]
+primaryColor = "#00A3E0"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+font = "sans serif"
+
+[client]
+showErrorDetails = true
+toolbarMode = "minimal"
+
+[logger]
+level = "info"
+
+[server]
+# Escuchar en todos los interfaces (0.0.0.0) para acceso remoto
+headless = true
+port = 8501
+enableXsrfProtection = true
+enableCORS = true
+allowRunOnSave = true
+
+# Mejor performance para múltiples usuarios
+maxUploadSize = 100
+maxMessageSize = 200
+
+[browser]
+gatherUsageStats = false

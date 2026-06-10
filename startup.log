@@ -1,0 +1,23 @@
+🚀 Iniciando Streamlit app...
+   Directorio: /home/atlantis/Functional_groups_creator_clasiffier_clone
+   Puerto: 8501
+   Logs: /home/atlantis/Functional_groups_creator_clasiffier_clone/streamlit_app.log
+
+✅ App iniciada (PID: 1383590)
+
+📊 App está ejecutándose
+
+════════════════════════════════════════════════════════════
+🌐 ACCESO WEB
+════════════════════════════════════════════════════════════
+
+URL pública:  http://4.151.89.10:8501
+URL local:    http://localhost:8501
+
+Vista de logs:
+  tail -f /home/atlantis/Functional_groups_creator_clasiffier_clone/streamlit_app.log
+
+Detener app:
+  pkill -f 'streamlit run app.py'
+
+════════════════════════════════════════════════════════════

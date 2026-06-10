@@ -9,7 +9,6 @@ import secrets as _secrets
 import string as _string
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import quote_plus
 
 import pandas as pd
 import streamlit as st
@@ -19,6 +18,8 @@ PROJECT_ROOT = Path(__file__).parent
 _SESSION_KEY = "_species_df"
 _PROPOSED_KEY = "_proposed_groups"
 _GROUPS_RATINGS_KEY = "_groups_ratings"
+_GROUP_DESCRIPTIONS_KEY = "_group_descriptions"
+_GROUP_ASSIGNMENTS_KEY = "_group_assignments"
 
 _AUTH_ERRORS = {
     "EMAIL_NOT_FOUND": "No existe una cuenta con ese correo.",
@@ -65,8 +66,9 @@ def _gen_password(length: int = 12) -> str:
 
 @st.cache_resource
 def get_db():
-    """Return SQLAlchemy engine connected to Azure SQL."""
+    """Return SQLAlchemy engine connected to Azure SQL (pymssql — no system driver needed)."""
     from sqlalchemy import create_engine
+    from urllib.parse import quote_plus
 
     server = _get_secret("AZURE_SQL_SERVER", "gocfg.database.windows.net")
     database = _get_secret("AZURE_SQL_DATABASE", "free-sql-db-5085999")
@@ -77,15 +79,10 @@ def get_db():
         st.error("❌ `AZURE_SQL_PASSWORD` no configurada.")
         st.stop()
 
-    conn_str = (
-        f"DRIVER={{ODBC Driver 18 for SQL Server}};"
-        f"Server=tcp:{server},1433;"
-        f"Database={database};"
-        f"Uid={user};"
-        f"Pwd={password};"
-        f"Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
+    engine = create_engine(
+        f"mssql+pymssql://{quote_plus(user)}:{quote_plus(password)}"
+        f"@{server}:1433/{database}?tds_version=7.4"
     )
-    engine = create_engine(f"mssql+pyodbc:///?odbc_connect={quote_plus(conn_str)}")
     _ensure_tables(engine)
     return engine
 
@@ -140,6 +137,22 @@ def _ensure_tables(engine):
             to_name NVARCHAR(255),
             note NVARCHAR(MAX),
             timestamp DATETIME DEFAULT GETDATE()
+        )""",
+        """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='group_descriptions' AND xtype='U')
+        CREATE TABLE group_descriptions (
+            group_code NVARCHAR(50) PRIMARY KEY,
+            description NVARCHAR(MAX),
+            updated_by NVARCHAR(255),
+            updated_at DATETIME DEFAULT GETDATE()
+        )""",
+        """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='group_assignments' AND xtype='U')
+        CREATE TABLE group_assignments (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            group_code NVARCHAR(50),
+            expert_email NVARCHAR(255),
+            assigned_at DATETIME DEFAULT GETDATE(),
+            assigned_by NVARCHAR(255),
+            UNIQUE (group_code, expert_email)
         )""",
     ]
     with engine.begin() as conn:
@@ -423,6 +436,19 @@ def rate_group(group_code: str, group_name: str, rating: int, comment: str, expe
         del st.session_state[_GROUPS_RATINGS_KEY]
 
 
+def propose_group_modification(group_code: str, group_name: str, suggestion: str, expert: str, db):
+    from sqlalchemy import text
+
+    with db.begin() as conn:
+        conn.execute(
+            text("""INSERT INTO group_proposals (type, group_code, group_name, reason, proposed_by, status)
+                     VALUES ('modification', :group_code, :group_name, :reason, :expert, 'pending')"""),
+            {"group_code": group_code, "group_name": group_name, "reason": suggestion, "expert": expert},
+        )
+    if _PROPOSED_KEY in st.session_state:
+        del st.session_state[_PROPOSED_KEY]
+
+
 def propose_group_deletion(group_code: str, group_name: str, reason: str, expert: str, db):
     from sqlalchemy import text
 
@@ -556,6 +582,175 @@ def send_password_reset(email: str) -> str:
             {"hash": _hash_password(new_password), "email": email.strip().lower()},
         )
     return new_password
+
+
+# ── Ensure new tables exist (safe to call multiple times) ─────────────────────
+
+def _ensure_new_tables(db):
+    """Create group_descriptions and group_assignments if missing. Guards with session state."""
+    if st.session_state.get("_new_tables_ensured"):
+        return
+    _ensure_tables(db)
+    st.session_state["_new_tables_ensured"] = True
+
+
+# ── Group descriptions ─────────────────────────────────────────────────────────
+
+def get_group_descriptions(db, force: bool = False) -> dict:
+    """Return {group_code: description} for all groups."""
+    _ensure_new_tables(db)
+    if not force and _GROUP_DESCRIPTIONS_KEY in st.session_state:
+        return st.session_state[_GROUP_DESCRIPTIONS_KEY]
+    df = pd.read_sql("SELECT group_code, description FROM group_descriptions", db)
+    result = {row["group_code"]: row["description"] or "" for _, row in df.iterrows()}
+    st.session_state[_GROUP_DESCRIPTIONS_KEY] = result
+    return result
+
+
+def set_group_description(group_code: str, description: str, updated_by: str, db):
+    from sqlalchemy import text
+
+    with db.begin() as conn:
+        conn.execute(
+            text("""MERGE group_descriptions AS target
+                    USING (SELECT :group_code AS group_code) AS source ON target.group_code = source.group_code
+                    WHEN MATCHED THEN UPDATE SET description = :description, updated_by = :updated_by, updated_at = GETDATE()
+                    WHEN NOT MATCHED THEN INSERT (group_code, description, updated_by) VALUES (:group_code, :description, :updated_by);"""),
+            {"group_code": group_code, "description": description, "updated_by": updated_by},
+        )
+    if _GROUP_DESCRIPTIONS_KEY in st.session_state:
+        del st.session_state[_GROUP_DESCRIPTIONS_KEY]
+
+
+def seed_group_descriptions(rows: list[dict], db):
+    """Seed descriptions from CSV rows [{Code, Species_Composition}]. Skips existing."""
+    from sqlalchemy import text
+
+    with db.begin() as conn:
+        for row in rows:
+            code = str(row.get("Code", "")).strip()
+            desc = str(row.get("Species_Composition", "")).strip()
+            if not code:
+                continue
+            conn.execute(
+                text("""IF NOT EXISTS (SELECT 1 FROM group_descriptions WHERE group_code = :code)
+                         INSERT INTO group_descriptions (group_code, description, updated_by)
+                         VALUES (:code, :desc, 'system')"""),
+                {"code": code, "desc": desc},
+            )
+    if _GROUP_DESCRIPTIONS_KEY in st.session_state:
+        del st.session_state[_GROUP_DESCRIPTIONS_KEY]
+
+
+# ── Group assignments ──────────────────────────────────────────────────────────
+
+def get_group_assignments(db, force: bool = False) -> pd.DataFrame:
+    """Return full assignments table."""
+    _ensure_new_tables(db)
+    if not force and _GROUP_ASSIGNMENTS_KEY in st.session_state:
+        return st.session_state[_GROUP_ASSIGNMENTS_KEY]
+    df = pd.read_sql("SELECT * FROM group_assignments ORDER BY group_code, expert_email", db)
+    st.session_state[_GROUP_ASSIGNMENTS_KEY] = df
+    return df
+
+
+def get_my_assignments(expert_email: str, db) -> list:
+    """Return list of group_codes assigned to this expert."""
+    df = get_group_assignments(db)
+    if df.empty:
+        return []
+    return df[df["expert_email"] == expert_email.lower()]["group_code"].tolist()
+
+
+def get_assignment_stats(db) -> dict:
+    """Return {group_code: count} of assignments per group."""
+    df = get_group_assignments(db)
+    if df.empty:
+        return {}
+    return df.groupby("group_code").size().to_dict()
+
+
+def distribute_groups(expert_emails: list, min_evals: int, assigned_by: str, db):
+    """Distribute groups so each group is assigned to at least min_evals experts.
+
+    Uses a round-robin approach: each group is repeated min_evals times in the
+    assignment queue, then distributed sequentially across experts.
+    Clears previous assignments before inserting new ones.
+    """
+    import random
+    from sqlalchemy import text
+
+    engine = db
+    groups_df = pd.read_sql("SELECT DISTINCT current_code FROM species WHERE status != 'removed'", engine)
+    group_codes = sorted(groups_df["current_code"].dropna().unique().tolist())
+
+    N = len(expert_emails)
+    G = len(group_codes)
+    if N == 0 or G == 0:
+        return
+
+    # Each group needs min_evals evaluators; cap at number of available experts
+    evals_per_group = min(min_evals, N)
+
+    # Build assignment queue: each group appears evals_per_group times
+    # Interleave groups so the same expert doesn't get consecutive codes from the same cluster
+    assignment_queue = []
+    for i in range(evals_per_group):
+        assignment_queue.extend(group_codes)
+
+    # Sort experts list deterministically but vary with iteration offset
+    shuffled_experts = expert_emails[:]
+    random.shuffle(shuffled_experts)
+
+    assignments = []
+    for idx, group_code in enumerate(assignment_queue):
+        expert = shuffled_experts[idx % N]
+        assignments.append((group_code, expert))
+
+    # Deduplicate: keep first occurrence of each (group, expert) pair
+    seen = set()
+    deduped = []
+    for group_code, expert in assignments:
+        key = (group_code, expert)
+        if key not in seen:
+            seen.add(key)
+            deduped.append(key)
+
+    # If after dedup some groups have fewer than evals_per_group assignments, fill gaps
+    from collections import defaultdict
+    group_expert_map = defaultdict(set)
+    for group_code, expert in deduped:
+        group_expert_map[group_code].add(expert)
+
+    for group_code in group_codes:
+        assigned = group_expert_map[group_code]
+        needed = evals_per_group - len(assigned)
+        if needed <= 0:
+            continue
+        remaining = [e for e in shuffled_experts if e not in assigned]
+        for expert in remaining[:needed]:
+            deduped.append((group_code, expert))
+
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM group_assignments"))
+        for group_code, expert in deduped:
+            conn.execute(
+                text("""INSERT INTO group_assignments (group_code, expert_email, assigned_by)
+                         VALUES (:group_code, :expert_email, :assigned_by)"""),
+                {"group_code": group_code, "expert_email": expert.lower(), "assigned_by": assigned_by},
+            )
+
+    if _GROUP_ASSIGNMENTS_KEY in st.session_state:
+        del st.session_state[_GROUP_ASSIGNMENTS_KEY]
+
+
+def clear_assignments(db):
+    from sqlalchemy import text
+
+    with db.begin() as conn:
+        conn.execute(text("DELETE FROM group_assignments"))
+    if _GROUP_ASSIGNMENTS_KEY in st.session_state:
+        del st.session_state[_GROUP_ASSIGNMENTS_KEY]
 
 
 # ── Legacy compat ──────────────────────────────────────────────────────────────

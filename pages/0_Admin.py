@@ -13,6 +13,14 @@ from sql_client import (
     delete_expert,
     send_password_reset,
     expert_name_from_auth,
+    get_db,
+    get_group_assignments,
+    get_assignment_stats,
+    get_groups_summary,
+    distribute_groups,
+    clear_assignments,
+    get_group_descriptions,
+    set_group_description,
 )
 
 st.set_page_config(page_title="Admin — Expertos", page_icon="🔧", layout="wide")
@@ -42,8 +50,15 @@ if "_experts_list" not in st.session_state:
 
 experts = st.session_state["_experts_list"]
 
+db = get_db()
+
 # ── Tabs ───────────────────────────────────────────────────────────────────────
-tab_list, tab_create = st.tabs(["👥 Expertos registrados", "➕ Registrar nuevo experto"])
+tab_list, tab_create, tab_dist, tab_desc = st.tabs([
+    "👥 Expertos registrados",
+    "➕ Registrar nuevo experto",
+    "📋 Distribución de Grupos",
+    "📝 Descripciones de Grupos",
+])
 
 
 # ── Tab 1: List + manage ───────────────────────────────────────────────────────
@@ -204,3 +219,153 @@ with tab_create:
                     )
                 except ValueError as e:
                     st.error(str(e))
+
+
+# ── Tab 3: Distribución de Grupos ─────────────────────────────────────────────
+with tab_dist:
+    st.subheader("📋 Distribución de grupos entre expertos")
+    st.markdown(
+        "Asigna grupos a los expertos de forma que cada grupo sea evaluado por al menos **N expertos**. "
+        "Los expertos pueden ver todos los grupos, pero solo son responsables de calificar los asignados."
+    )
+
+    with st.spinner("Cargando…"):
+        groups_summary = get_groups_summary(db)
+        assignments_df = get_group_assignments(db, force=True)
+        assignment_stats = get_assignment_stats(db)
+
+    active_experts = [u for u in experts if not u["disabled"]]
+    G = len(groups_summary)
+    N = len(active_experts)
+
+    if assignment_stats:
+        groups_with_min3 = sum(1 for c in assignment_stats.values() if c >= 3)
+    else:
+        groups_with_min3 = 0
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Grupos funcionales", G)
+    m2.metric("Expertos activos", N)
+    m3.metric("Grupos con ≥3 evaluadores", f"{groups_with_min3}/{G}")
+    m4.metric("Total asignaciones", 0 if assignments_df.empty else len(assignments_df))
+
+    st.divider()
+
+    col_cfg, col_btn = st.columns([3, 2])
+
+    with col_cfg:
+        min_evals = st.number_input(
+            "Evaluaciones mínimas por grupo",
+            min_value=1,
+            max_value=max(N, 1),
+            value=min(3, max(N, 1)),
+            help="Cada grupo será asignado a este número de expertos como mínimo.",
+        )
+
+    with col_btn:
+        st.markdown("&nbsp;")
+        if N == 0:
+            st.warning("No hay expertos activos registrados.")
+        elif G == 0:
+            st.warning("No hay grupos funcionales en la base de datos.")
+        else:
+            groups_per_expert = round(G * min_evals / N, 1)
+            st.caption(f"Cada experto recibirá aprox. **{groups_per_expert}** grupos.")
+
+            if st.button("🔀 Distribuir grupos", type="primary", use_container_width=True):
+                st.session_state["confirm_distribute"] = True
+
+    if st.session_state.get("confirm_distribute"):
+        st.warning(
+            f"Esto borrará las asignaciones actuales y redistribuirá {G} grupos "
+            f"entre {N} expertos ({min_evals} evaluadores por grupo mínimo). ¿Confirmar?"
+        )
+        c_yes, c_no = st.columns(2)
+        if c_yes.button("✅ Sí, distribuir", type="primary", use_container_width=True):
+            expert_emails = [u["email"] for u in active_experts]
+            with st.spinner("Distribuyendo grupos…"):
+                distribute_groups(expert_emails, int(min_evals), admin_name, db)
+            st.session_state["confirm_distribute"] = False
+            st.success("✅ Grupos distribuidos correctamente.")
+            st.rerun()
+        if c_no.button("Cancelar", use_container_width=True):
+            st.session_state["confirm_distribute"] = False
+            st.rerun()
+
+    if not assignments_df.empty:
+        st.divider()
+        if st.button("🗑️ Limpiar todas las asignaciones", use_container_width=False):
+            st.session_state["confirm_clear"] = True
+
+        if st.session_state.get("confirm_clear"):
+            st.warning("¿Eliminar todas las asignaciones? Esta acción no se puede deshacer.")
+            c1, c2 = st.columns(2)
+            if c1.button("✅ Sí, limpiar", type="primary", use_container_width=True):
+                clear_assignments(db)
+                st.session_state["confirm_clear"] = False
+                st.success("Asignaciones eliminadas.")
+                st.rerun()
+            if c2.button("Cancelar", key="cancel_clear", use_container_width=True):
+                st.session_state["confirm_clear"] = False
+                st.rerun()
+
+    st.divider()
+    st.markdown("#### Asignaciones actuales")
+
+    if assignments_df.empty:
+        st.info("No hay asignaciones. Usa el botón de arriba para distribuir los grupos.")
+    else:
+        pivot = assignments_df.pivot_table(
+            index="group_code",
+            columns="expert_email",
+            aggfunc=lambda x: "✅",
+            fill_value="—",
+        )
+        pivot.columns = [c.split("@")[0] for c in pivot.columns]
+        pivot.index.name = "Grupo"
+
+        raw_stats = assignments_df.groupby("group_code").size().rename("# Evaluadores")
+        pivot = pivot.join(raw_stats)
+
+        st.dataframe(pivot, use_container_width=True)
+
+        under_covered = [
+            code for code in groups_summary
+            if assignment_stats.get(code, 0) < min_evals
+        ]
+        if under_covered:
+            st.warning(
+                f"⚠️ {len(under_covered)} grupo(s) con menos de {min_evals} evaluador(es): "
+                + ", ".join(under_covered)
+            )
+        else:
+            st.success(f"✅ Todos los grupos tienen al menos {min_evals} evaluador(es) asignado(s).")
+
+
+# ── Tab 4: Descripciones de Grupos ────────────────────────────────────────────
+with tab_desc:
+    st.subheader("📝 Descripciones / Características de los Grupos")
+    st.caption("Estas descripciones aparecen en las fichas que ven los expertos al validar.")
+
+    with st.spinner("Cargando descripciones…"):
+        descriptions = get_group_descriptions(db, force=True)
+        groups_summary_desc = get_groups_summary(db)
+
+    if not groups_summary_desc:
+        st.info("No hay grupos funcionales en la base de datos.")
+    else:
+        for group_code in sorted(groups_summary_desc.keys()):
+            group_name = groups_summary_desc[group_code]["name"]
+            current_desc = descriptions.get(group_code, "")
+
+            with st.expander(f"**{group_code}** — {group_name}"):
+                new_desc = st.text_area(
+                    "Descripción / Características:",
+                    value=current_desc,
+                    height=100,
+                    key=f"desc_{group_code}",
+                    placeholder="Composición de especies, características ecológicas, rol funcional…",
+                )
+                if st.button("💾 Guardar", key=f"save_desc_{group_code}"):
+                    set_group_description(group_code, new_desc, admin_name, db)
+                    st.success("✅ Descripción guardada.")

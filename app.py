@@ -20,12 +20,15 @@ from sql_client import (
     load_species,
     sign_in,
     expert_name_from_auth,
+    seed_group_descriptions,
+    get_group_descriptions,
 )
 
 DATA_DIR       = Path(__file__).parent / "data"
 OUTPUT_DIR     = Path(__file__).parent / "output"
 CLASSIFIED_CSV = OUTPUT_DIR / "species_classified.csv"
 GROUPS_CSV     = DATA_DIR  / "functional_groups_final.csv"
+LOGO_PATH      = Path(__file__).parent / "CEDO_2023_logo.png"
 
 st.set_page_config(
     page_title="Validación — Grupos Funcionales",
@@ -33,6 +36,13 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+if LOGO_PATH.exists():
+    st.logo(str(LOGO_PATH), size="small")
+    st.markdown(
+        "<style>[data-testid='stLogo'] { transform: scale(1.2); transform-origin: left center; }</style>",
+        unsafe_allow_html=True,
+    )
 
 # ── Session state defaults ─────────────────────────────────────────────────────
 st.session_state.setdefault("auth", None)
@@ -87,12 +97,22 @@ with col_logout:
 
 st.markdown("---")
 
-# ── Firebase init ─────────────────────────────────────────────────────────────
+# ── DB init ───────────────────────────────────────────────────────────────────
 db = get_db()
 
-# Confiar en que Firestore está importado
-# (Importación hecha con reset_firestore.py en máquina local)
 st.session_state.db_imported = True
+
+# Sembrar descripciones desde CSV si la tabla está vacía
+if GROUPS_CSV.exists() and "_groups_desc_seeded" not in st.session_state:
+    try:
+        existing = get_group_descriptions(db)
+        if not existing:
+            import pandas as _pd
+            groups_rows = _pd.read_csv(GROUPS_CSV).to_dict("records")
+            seed_group_descriptions(groups_rows, db)
+        st.session_state["_groups_desc_seeded"] = True
+    except Exception:
+        pass
 
 # ── Stats dashboard ────────────────────────────────────────────────────────────
 force_reload = st.button(
@@ -128,4 +148,11 @@ st.markdown(
     "|---|---|\n"
     "| **✅ Validar Grupos** | Revisa las especies de cada grupo. Confirma, mueve o quita taxa. |\n"
     "| **📊 Resultados Finales** | Vista consolidada, grupos propuestos y descarga de resultados. |"
+)
+
+st.markdown(
+    "<div style='text-align:center; color:#bbb; font-size:0.72rem; margin-top:4rem;'>"
+    "App desarrollada por Ricardo Cavieses"
+    "</div>",
+    unsafe_allow_html=True,
 )

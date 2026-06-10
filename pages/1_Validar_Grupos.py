@@ -15,7 +15,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 import streamlit as st
 import pandas as pd
-from firebase_client import (
+from sql_client import (
     get_db,
     load_species,
     get_groups_summary,
@@ -23,6 +23,7 @@ from firebase_client import (
     propose_group_deletion,
     propose_new_group_detailed,
     get_group_rating_summary,
+    get_proposed_groups,
 )
 
 st.set_page_config(
@@ -222,8 +223,7 @@ with tab2:
     # Ver propuestas pendientes
     st.markdown("### 📋 Propuestas Pendientes")
     try:
-        proposals = db.collection("groups_proposals").stream()
-        proposals_list = [p.to_dict() for p in proposals]
+        proposals_list = get_proposed_groups(db)
 
         if not proposals_list:
             st.info("No hay propuestas aún")

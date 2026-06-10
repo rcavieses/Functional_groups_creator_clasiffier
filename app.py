@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / ".env")
 
 import streamlit as st
-from firebase_client import (
+from sql_client import (
     get_db,
     is_imported,
     import_classifications,
@@ -96,7 +96,7 @@ st.session_state.db_imported = True
 
 # ── Stats dashboard ────────────────────────────────────────────────────────────
 force_reload = st.button(
-    "🔄 Recargar datos desde Firebase",
+    "🔄 Recargar datos desde Azure SQL",
     help="Solo necesario para ver cambios recientes de otros expertos.",
 )
 with st.spinner("Cargando estadísticas…"):

@@ -19,27 +19,31 @@ GROUPS_CSV = DATA_DIR / "functional_groups_final.csv"
 
 # Credenciales Azure
 AZURE_SERVER = "gocfg.database.windows.net"
-AZURE_DB = "free-sql-db-2951059"
-AZURE_USER = "cloudSAa6de9d39"
+AZURE_DB = "free-sql-db-5085999"
+AZURE_USER = "rcavieses"
 AZURE_PASSWORD = os.environ.get("AZURE_SQL_PASSWORD", "")
 
 def get_azure_engine():
     """Crear conexión a Azure SQL"""
-    connection_string = (
-        f"mssql+pyodbc://{AZURE_USER}:{AZURE_PASSWORD}"
-        f"@{AZURE_SERVER}/{AZURE_DB}"
-        f"?driver=ODBC+Driver+17+for+SQL+Server"
-        f"&Encrypt=yes&TrustServerCertificate=no&Connection+Timeout=30"
+    from urllib.parse import quote_plus
+    conn_str = (
+        f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+        f"Server=tcp:{AZURE_SERVER},1433;"
+        f"Database={AZURE_DB};"
+        f"Uid={AZURE_USER};"
+        f"Pwd={AZURE_PASSWORD};"
+        f"Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
     )
+    connection_string = f"mssql+pyodbc:///?odbc_connect={quote_plus(conn_str)}"
     return create_engine(connection_string)
 
 def migrate():
     print("\n" + "="*60)
-    print("MIGRAR CSV → AZURE SQL SERVER")
+    print("MIGRAR CSV -> AZURE SQL SERVER")
     print("="*60 + "\n")
 
     # Paso 1: Leer del CSV local
-    print("[1/3] Leyendo datos del CSV…")
+    print("[1/3] Leyendo datos del CSV...")
 
     if not CLASSIFIED_CSV.exists():
         raise FileNotFoundError(f"CSV no encontrado: {CLASSIFIED_CSV}")
@@ -49,10 +53,10 @@ def migrate():
     df_classified = pd.read_csv(CLASSIFIED_CSV)
     df_groups = pd.read_csv(GROUPS_CSV)
 
-    print(f"✅ {len(df_classified)} especies cargadas del CSV")
+    print(f"OK {len(df_classified)} especies cargadas del CSV")
 
     # Paso 2: Preparar datos
-    print("\n[2/3] Preparando datos…")
+    print("\n[2/3] Preparando datos...")
 
     code_to_name = dict(zip(
         df_groups["Code"].str.strip(),
@@ -81,22 +85,37 @@ def migrate():
         })
 
     df = pd.DataFrame(species_records)
-    print(f"✅ {len(df)} registros preparados")
+
+    # Deduplicar por taxon ignorando mayúsculas (la DB usa collation case-insensitive)
+    before = len(df)
+    df["_taxon_lower"] = df["taxon"].str.lower().str.strip()
+    df = df.drop_duplicates(subset="_taxon_lower", keep="first").drop(columns="_taxon_lower")
+    df = df.reset_index(drop=True)
+    removed = before - len(df)
+    if removed:
+        print(f"  ({removed} duplicados case-insensitive eliminados)")
+
+    print(f"OK {len(df)} registros preparados")
 
     # Paso 3: Insertar en Azure SQL
-    print("\n[3/3] Insertando en Azure SQL…")
+    print("\n[3/3] Insertando en Azure SQL...")
     engine = get_azure_engine()
 
-    df.to_sql("species", con=engine, if_exists="append", index=False)
-    print(f"✅ {len(df)} registros insertados en Azure SQL")
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        conn.execute(text("TRUNCATE TABLE species"))
+        print("Tabla vaciada.")
+
+    df.to_sql("species", con=engine, if_exists="append", index=False, chunksize=500)
+    print(f"OK {len(df)} registros insertados en Azure SQL")
 
     print("\n" + "="*60)
-    print("✅ MIGRACIÓN COMPLETADA")
+    print("OK MIGRACIÓN COMPLETADA")
     print("="*60)
 
 if __name__ == "__main__":
     if not AZURE_PASSWORD:
-        print("❌ Error: Define AZURE_SQL_PASSWORD en .env")
+        print("ERROR Error: Define AZURE_SQL_PASSWORD en .env")
         exit(1)
     
     migrate()

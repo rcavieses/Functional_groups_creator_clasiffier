@@ -5,7 +5,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 import streamlit as st
 import pandas as pd
-from firebase_client import (
+from sql_client import (
     get_db,
     load_species,
     get_proposed_groups,
@@ -26,8 +26,8 @@ st.caption("Vista consolidada de la validación por expertos")
 
 col_refresh, _ = st.columns([1, 5])
 with col_refresh:
-    if st.button("🔄 Recargar desde Firebase", use_container_width=True,
-                 help="Vuelve a leer Firestore (~5000 lecturas). Solo si necesitas ver cambios de otros expertos."):
+    if st.button("🔄 Recargar desde Azure SQL", use_container_width=True,
+                 help="Vuelve a leer Azure SQL. Solo si necesitas ver cambios de otros expertos."):
         load_species(db, force=True)
         st.rerun()
 

@@ -12,7 +12,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 import streamlit as st
 import pandas as pd
-from firebase_client import (
+from sql_client import (
     get_db,
     load_species,
     get_species_for_group,
@@ -121,7 +121,7 @@ with st.sidebar:
     st.divider()
     st.subheader("Grupos Funcionales")
 
-    if st.button("🔄 Recargar desde Firebase", use_container_width=True,
+    if st.button("🔄 Recargar desde Azure SQL", use_container_width=True,
                  help="Recarga todos los datos. Solo necesario para ver cambios de otros expertos."):
         load_species(db, force=True)
         st.rerun()

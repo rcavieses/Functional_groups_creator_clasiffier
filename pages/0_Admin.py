@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 import streamlit as st
-from firebase_client import (
+from sql_client import (
     is_admin,
     list_experts,
     create_expert,
@@ -125,12 +125,24 @@ with tab_list:
                 dlg_edit_name(uid, user["display_name"] or "")
 
             # Password reset
-            if cols[4].button("🔑", key=f"reset_{uid}", help="Enviar correo de restablecimiento"):
+            if cols[4].button("🔑", key=f"reset_{uid}", help="Generar nueva contraseña temporal"):
                 try:
-                    send_password_reset(email)
-                    st.toast(f"Correo de restablecimiento enviado a {email}", icon="✅")
+                    new_pwd = send_password_reset(email)
+                    st.session_state[f"reset_pwd_{uid}"] = new_pwd
+                    st.rerun()
                 except ValueError as e:
                     st.error(str(e))
+
+            if st.session_state.get(f"reset_pwd_{uid}"):
+                st.text_input(
+                    f"Nueva contraseña temporal para {email}:",
+                    value=st.session_state[f"reset_pwd_{uid}"],
+                    key=f"show_pwd_{uid}",
+                    help="Copia esta contraseña y compártela de forma segura.",
+                )
+                if st.button("✓ Listo", key=f"ack_pwd_{uid}"):
+                    del st.session_state[f"reset_pwd_{uid}"]
+                    st.rerun()
 
             # Toggle disable
             if disabled:

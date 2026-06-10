@@ -42,6 +42,25 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+_AZURE_TRANSIENT_CODES = {40613, 40197, 40501, 49918, 4060, 1205}
+
+def _with_retry(fn, *args, retries: int = 3, delay: float = 2.0, **kwargs):
+    """Retry fn on Azure SQL transient errors."""
+    import time
+    last_exc = None
+    for attempt in range(retries):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            code = getattr(e, "args", [None])[0] if e.args else None
+            if isinstance(code, int) and code in _AZURE_TRANSIENT_CODES:
+                last_exc = e
+                time.sleep(delay * (attempt + 1))
+            else:
+                raise
+    raise last_exc
+
+
 def _hash_password(password: str) -> str:
     salt = _secrets.token_hex(16)
     key = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
@@ -81,7 +100,12 @@ def get_db():
 
     engine = create_engine(
         f"mssql+pymssql://{quote_plus(user)}:{quote_plus(password)}"
-        f"@{server}:1433/{database}?tds_version=7.4"
+        f"@{server}:1433/{database}?tds_version=7.4",
+        pool_pre_ping=True,       # descarta conexiones obsoletas del pool antes de usarlas
+        pool_recycle=1800,        # recicla conexiones cada 30 min para evitar timeouts de Azure
+        pool_size=5,
+        max_overflow=2,
+        connect_args={"timeout": 30, "login_timeout": 30},
     )
     _ensure_tables(engine)
     return engine
@@ -166,11 +190,15 @@ def sign_in(email: str, password: str) -> dict:
     from sqlalchemy import text
 
     engine = get_db()
-    with engine.connect() as conn:
-        row = conn.execute(
-            text("SELECT id, email, display_name, password_hash, is_admin, is_disabled FROM users WHERE email = :email"),
-            {"email": email.strip().lower()},
-        ).fetchone()
+
+    def _query():
+        with engine.connect() as conn:
+            return conn.execute(
+                text("SELECT id, email, display_name, password_hash, is_admin, is_disabled FROM users WHERE email = :email"),
+                {"email": email.strip().lower()},
+            ).fetchone()
+
+    row = _with_retry(_query)
 
     if row is None:
         raise ValueError(_AUTH_ERRORS["EMAIL_NOT_FOUND"])

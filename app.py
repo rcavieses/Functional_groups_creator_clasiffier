@@ -40,7 +40,7 @@ st.set_page_config(
 if LOGO_PATH.exists():
     st.logo(str(LOGO_PATH), size="small")
     st.markdown(
-        "<style>[data-testid='stLogo'] { transform: scale(1.2); transform-origin: left center; }</style>",
+        "<style>[data-testid='stLogo'] { transform: scale(2.2); transform-origin: left center; }</style>",
         unsafe_allow_html=True,
     )
 

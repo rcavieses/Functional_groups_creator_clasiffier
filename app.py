@@ -87,21 +87,12 @@ with col_logout:
 
 st.markdown("---")
 
-# ── Firebase init + one-time import ───────────────────────────────────────────
+# ── Firebase init ─────────────────────────────────────────────────────────────
 db = get_db()
 
-if not st.session_state.db_imported:
-    # Verificar que el CSV existe (sin leer Firestore — ahorra cuota)
-    if not CLASSIFIED_CSV.exists():
-        st.error(
-            f"No se encontró el archivo clasificado: `{CLASSIFIED_CSV}`\n\n"
-            "Ejecuta primero el script de clasificación en tu máquina."
-        )
-        st.stop()
-
-    # Confiar en que Firestore está importado si el CSV existe
-    # (La primera vez que se usa reset_firestore.py o update_firestore.py, se importa)
-    st.session_state.db_imported = True
+# Confiar en que Firestore está importado
+# (Importación hecha con reset_firestore.py en máquina local)
+st.session_state.db_imported = True
 
 # ── Stats dashboard ────────────────────────────────────────────────────────────
 force_reload = st.button(

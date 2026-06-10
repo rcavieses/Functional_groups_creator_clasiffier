@@ -91,18 +91,16 @@ st.markdown("---")
 db = get_db()
 
 if not st.session_state.db_imported:
-    if not is_imported(db):
-        if not CLASSIFIED_CSV.exists():
-            st.error(
-                f"No se encontró el archivo clasificado: `{CLASSIFIED_CSV}`\n\n"
-                "Ejecuta primero el script de clasificación:\n"
-                "```\npython classify_species.py --input data/final_taxonomy_occ.csv "
-                "--by-genus --provider anthropic --no-reasoning\n```"
-            )
-            st.stop()
-        with st.spinner("Importando clasificaciones a Firebase… (solo ocurre la primera vez)"):
-            n = import_classifications(CLASSIFIED_CSV, GROUPS_CSV, db)
-        st.success(f"✅ {n:,} taxa importados exitosamente a Firestore.")
+    # Verificar que el CSV existe (sin leer Firestore — ahorra cuota)
+    if not CLASSIFIED_CSV.exists():
+        st.error(
+            f"No se encontró el archivo clasificado: `{CLASSIFIED_CSV}`\n\n"
+            "Ejecuta primero el script de clasificación en tu máquina."
+        )
+        st.stop()
+
+    # Confiar en que Firestore está importado si el CSV existe
+    # (La primera vez que se usa reset_firestore.py o update_firestore.py, se importa)
     st.session_state.db_imported = True
 
 # ── Stats dashboard ────────────────────────────────────────────────────────────

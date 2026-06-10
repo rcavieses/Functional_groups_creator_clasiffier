@@ -30,12 +30,15 @@ except ImportError:
 PROJECT_ROOT = Path(__file__).parent
 CREDS_FILE   = PROJECT_ROOT / "firebase-credentials.json"
 
-SPECIES_COL   = "species"
-AUDIT_COL     = "audit_log"
-PROPOSED_COL  = "proposed_groups"
+SPECIES_COL      = "species"
+AUDIT_COL        = "audit_log"
+PROPOSED_COL     = "proposed_groups"
+GROUPS_RATINGS   = "groups_ratings"
+GROUPS_PROPOSALS = "groups_proposals"
 
-_SESSION_KEY  = "_species_df"
-_PROPOSED_KEY = "_proposed_groups"
+_SESSION_KEY     = "_species_df"
+_PROPOSED_KEY    = "_proposed_groups"
+_GROUPS_RATINGS  = "_groups_ratings"
 _AUTH_URL     = "https://identitytoolkit.googleapis.com/v1"
 
 _AUTH_ERRORS = {
@@ -405,6 +408,80 @@ def propose_new_group(
         "from_code": from_code, "to_code": group_code.upper(),
         "to_name": group_name, "expert": expert, "timestamp": now,
     }, db)
+
+
+# ── Validación de Grupos (Ratings y Propuestas) ────────────────────────────────
+
+def rate_group(group_code: str, group_name: str, rating: int, comment: str, expert: str, db):
+    """Calificar un grupo funcional (1-5 estrellas)."""
+    now = _now()
+    doc_id = f"{group_code}_{expert}".replace(" ", "_")
+    db.collection(GROUPS_RATINGS).document(doc_id).set({
+        "group_code": group_code,
+        "group_name": group_name,
+        "rating": rating,  # 1-5
+        "comment": comment,
+        "expert": expert,
+        "timestamp": now,
+    })
+
+
+def propose_group_deletion(group_code: str, group_name: str, reason: str, expert: str, db):
+    """Proponer eliminación de un grupo con argumento."""
+    now = _now()
+    db.collection(GROUPS_PROPOSALS).add({
+        "type": "deletion",
+        "group_code": group_code,
+        "group_name": group_name,
+        "reason": reason,
+        "proposed_by": expert,
+        "proposed_at": now,
+        "status": "pending",
+    })
+
+
+def propose_new_group_detailed(
+    group_code: str, group_name: str, description: str,
+    justification: str, expert: str, db
+):
+    """Proponer nuevo grupo con descripción y justificación detallada."""
+    now = _now()
+    db.collection(GROUPS_PROPOSALS).add({
+        "type": "new_group",
+        "group_code": group_code.upper(),
+        "group_name": group_name,
+        "description": description,
+        "justification": justification,
+        "proposed_by": expert,
+        "proposed_at": now,
+        "status": "pending",
+    })
+
+
+def load_group_ratings(db, force: bool = False) -> pd.DataFrame:
+    """Cargar ratings de grupos."""
+    if force or _GROUPS_RATINGS not in st.session_state:
+        docs = db.collection(GROUPS_RATINGS).get()
+        df = pd.DataFrame([d.to_dict() for d in docs]) if docs else pd.DataFrame()
+        st.session_state[_GROUPS_RATINGS] = df
+    return st.session_state[_GROUPS_RATINGS]
+
+
+def get_group_rating_summary(db) -> dict:
+    """Resumen de ratings por grupo (promedio, conteo)."""
+    ratings_df = load_group_ratings(db)
+    if ratings_df.empty:
+        return {}
+
+    summary = {}
+    for group_code in ratings_df["group_code"].unique():
+        group_ratings = ratings_df[ratings_df["group_code"] == group_code]
+        summary[group_code] = {
+            "avg_rating": group_ratings["rating"].mean(),
+            "count": len(group_ratings),
+            "comments": group_ratings["comment"].tolist(),
+        }
+    return summary
 
 
 # ── Firebase Auth ──────────────────────────────────────────────────────────────

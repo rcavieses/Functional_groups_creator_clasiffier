@@ -1,3 +1,13 @@
+"""
+Validar Grupos Funcionales — Vista de Fichas
+
+Interfaz principal para validar grupos completos:
+- Ver estadísticas de cada grupo
+- Calificar grupos (1-5 estrellas)
+- Proponer eliminación con argumento
+- Proponer nuevo grupo con descripción
+"""
+
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -6,284 +16,272 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 import streamlit as st
 import pandas as pd
 from firebase_client import (
-    expert_name_from_auth,
     get_db,
     load_species,
-    get_species_for_group,
     get_groups_summary,
-    get_removed_species,
-    validate_species,
-    remove_species,
-    move_species,
-    restore_species,
-    propose_new_group,
+    rate_group,
+    propose_group_deletion,
+    propose_new_group_detailed,
+    get_group_rating_summary,
 )
 
-DATA_DIR   = Path(__file__).parent.parent / "data"
-GROUPS_CSV = DATA_DIR / "functional_groups_final.csv"
+st.set_page_config(
+    page_title="Validar Grupos",
+    page_icon="📊",
+    layout="wide",
+)
 
-st.set_page_config(page_title="Validar Grupos", page_icon="✅", layout="wide")
-
-# ── Auth guard ─────────────────────────────────────────────────────────────────
+# ── Verificar auth ─────────────────────────────────────────────────────────────
 if not st.session_state.get("auth"):
-    st.warning("⚠️ Debes iniciar sesión primero. Ve a la página de **Inicio**.")
+    st.warning("Por favor inicia sesión en la página principal")
     st.stop()
 
-expert = expert_name_from_auth(st.session_state.auth)
+expert_name = st.session_state.get("expert_name", "")
 db = get_db()
 
+st.title("📊 Validación de Grupos Funcionales")
+st.caption(f"Experto: **{expert_name}**")
 
-# ── Load groups reference (cached forever — static data) ──────────────────────
-@st.cache_data
-def load_groups() -> dict[str, str]:
-    gdf = pd.read_csv(GROUPS_CSV)
-    return dict(zip(gdf["Code"].str.strip(), gdf["Functional_Group"].str.strip()))
-
-
-all_groups = load_groups()
-# Exclude proposed-group codes (PROP_*) from the navigation list
-nav_groups = {c: n for c, n in all_groups.items() if not c.startswith("PROP_")}
-
-
-# ── Dialogs ────────────────────────────────────────────────────────────────────
-
-@st.dialog("↔ Mover especie", width="small")
-def dlg_move(taxon: str, from_code: str):
-    st.markdown(f"**{taxon}**")
-    st.caption(f"Grupo actual: {from_code} — {all_groups.get(from_code, '')}")
-    options = {f"{c} — {n}": (c, n) for c, n in nav_groups.items() if c != from_code}
-    choice = st.selectbox("Grupo destino:", list(options.keys()))
-    note = st.text_input("Nota (opcional):", placeholder="¿Por qué mueves esta especie?")
-    col1, col2 = st.columns(2)
-    if col1.button("Mover", type="primary", use_container_width=True):
-        to_code, to_name = options[choice]
-        move_species(taxon, from_code, to_code, to_name, expert, note, db)
-        st.rerun()
-    if col2.button("Cancelar", use_container_width=True):
-        st.rerun()
-
-
-@st.dialog("💡 Proponer nuevo grupo funcional", width="large")
-def dlg_propose(taxon: str, from_code: str):
-    st.markdown(f"Proponer nuevo grupo para **{taxon}**")
-    st.caption(
-        "Tu propuesta será visible en **Resultados Finales** para revisión del equipo. "
-        "La especie quedará asignada al grupo propuesto."
-    )
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        group_name_new = st.text_input("Nombre del grupo:", placeholder="Ej. Aves playeras costeras")
-    with col2:
-        group_code_new = st.text_input("Código (máx 6):", placeholder="Ej. APC", max_chars=6)
-    description = st.text_area(
-        "Composición / descripción:",
-        placeholder="¿Qué tipos de organismos componen este grupo? ¿Cuál es su rol ecológico?",
-        height=100,
-    )
-    valid = bool(group_name_new.strip() and group_code_new.strip() and description.strip())
-    col_ok, col_cancel = st.columns(2)
-    if col_ok.button("Proponer y reasignar", type="primary", disabled=not valid, use_container_width=True):
-        propose_new_group(
-            taxon, from_code,
-            group_name_new.strip(), group_code_new.strip(), description.strip(),
-            expert, db,
-        )
-        st.rerun()
-    if col_cancel.button("Cancelar", use_container_width=True):
-        st.rerun()
-
-
-@st.dialog("🗑 Confirmar eliminación", width="small")
-def dlg_remove(taxon: str, current_code: str):
-    st.warning(f"¿Quitar **{taxon}** del modelo?")
-    st.caption(
-        "Úsalo para taxa que no son marinos, son duplicados o no pertenecen "
-        "al ecosistema del Golfo de California. Se puede restaurar después."
-    )
-    note = st.text_input("Razón (opcional):", placeholder="Ej. Ave terrestre, no marina")
-    col1, col2 = st.columns(2)
-    if col1.button("🗑 Confirmar", type="primary", use_container_width=True):
-        remove_species(taxon, current_code, expert, note, db)
-        st.rerun()
-    if col2.button("Cancelar", use_container_width=True):
-        st.rerun()
-
-
-# ── Sidebar: group selector ────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown(f"**👤 {expert}**")
-    st.divider()
-    st.subheader("Grupos Funcionales")
-
-    if st.button("🔄 Recargar desde Firebase", use_container_width=True,
-                 help="Recarga todos los datos (usa ~5000 lecturas). Solo necesario para ver cambios de otros expertos."):
-        load_species(db, force=True)
-        st.rerun()
-
-    filter_opt = st.radio(
-        "Mostrar:",
-        ["Todos", "Con pendientes", "Completados"],
-        horizontal=True,
-    )
-
-    # Summary computed from in-memory cache — zero Firestore reads
-    summary = get_groups_summary(db)
-
-    if "selected_group" not in st.session_state:
-        st.session_state.selected_group = list(nav_groups.keys())[0]
-
-    for code, name in nav_groups.items():
-        s = summary.get(code, {"total": 0, "validated": 0, "pending": 0})
-        total_g = s["total"]
-        pending_g = s["pending"]
-
-        if filter_opt == "Con pendientes" and pending_g == 0:
-            continue
-        if filter_opt == "Completados" and pending_g > 0:
-            continue
-
-        if total_g == 0:
-            icon = "⬜"
-        elif pending_g == 0:
-            icon = "✅"
-        else:
-            icon = "⏳"
-
-        label = f"{icon} {code} — {name[:22]}… ({total_g})" if len(name) > 22 else f"{icon} {code} — {name} ({total_g})"
-        is_selected = st.session_state.selected_group == code
-
-        if st.button(
-            label,
-            key=f"grp_{code}",
-            use_container_width=True,
-            type="primary" if is_selected else "secondary",
-        ):
-            st.session_state.selected_group = code
-            st.rerun()
-
-
-# ── Main: group detail ─────────────────────────────────────────────────────────
-selected_code = st.session_state.get("selected_group")
-if not selected_code:
-    st.info("Selecciona un grupo en el menú lateral.")
-    st.stop()
-
-group_name = nav_groups.get(selected_code, selected_code)
-st.title(f"`{selected_code}` — {group_name}")
-
-with st.spinner("Cargando especies del grupo…"):
-    species_df = get_species_for_group(selected_code, db)
-
-# Toolbar
-col_stats, col_filter = st.columns([3, 1])
-with col_stats:
-    if species_df.empty:
-        st.info("Este grupo no tiene taxa activos.")
-    else:
-        n_total = len(species_df)
-        n_val = int((species_df["status"] == "validated").sum())
-        n_pend = int((species_df["status"] == "pending").sum())
-        h = int((species_df["confidence"] == "high").sum())
-        m = int((species_df["confidence"] == "medium").sum())
-        lo = int((species_df["confidence"] == "low").sum())
-        st.caption(
-            f"**{n_total} taxa** · ✅ {n_val} validados · ⏳ {n_pend} pendientes &nbsp;|&nbsp; "
-            f"🟢 {h} alta · 🟡 {m} media · 🔴 {lo} baja"
-        )
-
-with col_filter:
-    conf_filter = st.selectbox(
-        "Filtrar confianza:",
-        ["Todos", "high", "medium", "low"],
-        key="conf_filter",
-    )
+# ── Cargar datos ───────────────────────────────────────────────────────────────
+with st.spinner("Cargando datos…"):
+    species_df = load_species(db)
+    groups_summary = get_groups_summary(db)
+    ratings_summary = get_group_rating_summary(db)
 
 if species_df.empty:
+    st.error("No hay datos disponibles")
     st.stop()
 
-# Apply filter
-display_df = species_df.copy()
-if conf_filter != "Todos":
-    display_df = display_df[display_df["confidence"] == conf_filter]
+# ── Tabs principales ───────────────────────────────────────────────────────────
+tab1, tab2, tab3 = st.tabs(["🎯 Validar Grupos", "💡 Propuestas", "📊 Estadísticas"])
 
-# Sort: pending first, then alphabetical
-status_order = {"pending": 0, "validated": 1}
-display_df = display_df.sort_values(
-    ["status", "taxon"],
-    key=lambda col: col.map(status_order).fillna(2) if col.name == "status" else col,
-).reset_index(drop=True)
+# ── TAB 1: Validar Grupos (Fichas) ─────────────────────────────────────────────
+with tab1:
+    st.markdown("### Fichas de Grupos Funcionales")
+    st.caption("Revisa cada grupo, califica, propón cambios")
 
-st.divider()
+    if not groups_summary:
+        st.info("No hay grupos para validar")
+    else:
+        # Crear columnas para las fichas
+        cols = st.columns(3)
+        col_idx = 0
 
-# Column headers
-hcols = st.columns([5, 2, 2, 1, 1, 1, 1])
-hcols[0].markdown("**Taxon**")
-hcols[1].markdown("**Estado**")
-hcols[2].markdown("**Confianza LLM**")
-hcols[3].markdown("**✅**")
-hcols[4].markdown("**↔**")
-hcols[5].markdown("**💡**")
-hcols[6].markdown("**🗑**")
-st.divider()
+        for group_code, group_info in sorted(groups_summary.items()):
+            col = cols[col_idx % 3]
+            col_idx += 1
 
-CONF_ICON = {"high": "🟢 alta", "medium": "🟡 media", "low": "🔴 baja"}
+            with col:
+                with st.container(border=True):
+                    # Encabezado
+                    st.markdown(f"### {group_code}")
+                    st.markdown(f"**{group_info['name']}**")
 
-for _, row in display_df.iterrows():
-    taxon = row["taxon"]
-    status = row.get("status", "pending")
-    confidence = row.get("confidence", "?")
-    modified_by = row.get("last_modified_by") or ""
+                    # Estadísticas principales
+                    species_count = group_info["total"]
+                    validated_count = group_info["validated"]
 
-    cols = st.columns([5, 2, 2, 1, 1, 1, 1])
+                    st.metric(
+                        "Especies",
+                        f"{species_count}",
+                        f"{validated_count} validadas"
+                    )
 
-    with cols[0]:
-        st.markdown(f"*{taxon}*")
-        if modified_by:
-            st.caption(f"↳ {modified_by}")
+                    # Rating
+                    if group_code in ratings_summary:
+                        avg_rating = ratings_summary[group_code]["avg_rating"]
+                        count = ratings_summary[group_code]["count"]
+                        st.markdown(f"⭐ **{avg_rating:.1f}/5** ({count} calificaciones)")
+                    else:
+                        st.markdown("⭐ **Sin calificaciones aún**")
 
-    with cols[1]:
-        if status == "validated":
-            st.markdown("✅ Validado")
+                    st.divider()
+
+                    # Acciones
+                    st.markdown("**Acciones:**")
+
+                    col_a, col_b = st.columns(2)
+
+                    # Calificar
+                    with col_a:
+                        rating = st.selectbox(
+                            "Calificación",
+                            [1, 2, 3, 4, 5],
+                            key=f"rating_{group_code}",
+                            label_visibility="collapsed",
+                        )
+
+                    with col_b:
+                        if st.button("⭐ Calificar", key=f"btn_rate_{group_code}", use_container_width=True):
+                            st.session_state[f"show_comment_{group_code}"] = True
+
+                    # Comentario (si se clickeó calificar)
+                    if st.session_state.get(f"show_comment_{group_code}"):
+                        comment = st.text_area(
+                            "Comentario (opcional)",
+                            key=f"comment_{group_code}",
+                            height=60,
+                        )
+                        if st.button("💾 Guardar calificación", key=f"save_rate_{group_code}", use_container_width=True):
+                            try:
+                                rate_group(
+                                    group_code,
+                                    group_info["name"],
+                                    rating,
+                                    comment,
+                                    expert_name,
+                                    db
+                                )
+                                st.success("✅ Calificación guardada")
+                                st.session_state[f"show_comment_{group_code}"] = False
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error: {e}")
+
+                    st.divider()
+
+                    # Proponer eliminación
+                    if st.button("🗑️ Proponer eliminar", key=f"btn_delete_{group_code}", use_container_width=True):
+                        st.session_state[f"show_delete_{group_code}"] = True
+
+                    if st.session_state.get(f"show_delete_{group_code}"):
+                        reason = st.text_area(
+                            "¿Por qué eliminar este grupo?",
+                            key=f"delete_reason_{group_code}",
+                            height=80,
+                        )
+                        if st.button("✓ Enviar propuesta", key=f"send_delete_{group_code}", use_container_width=True):
+                            if reason.strip():
+                                try:
+                                    propose_group_deletion(
+                                        group_code,
+                                        group_info["name"],
+                                        reason,
+                                        expert_name,
+                                        db
+                                    )
+                                    st.success("✅ Propuesta enviada")
+                                    st.session_state[f"show_delete_{group_code}"] = False
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error: {e}")
+                            else:
+                                st.warning("Ingresa un argumento")
+
+# ── TAB 2: Proponer Nuevos Grupos ──────────────────────────────────────────────
+with tab2:
+    st.markdown("### 💡 Proponer Nuevo Grupo")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        new_code = st.text_input(
+            "Código del grupo",
+            placeholder="ej: BIO, MAR, etc.",
+            max_chars=10,
+        ).upper()
+
+    with col2:
+        new_name = st.text_input(
+            "Nombre del grupo",
+            placeholder="ej: Organismos bentónicos",
+        )
+
+    new_description = st.text_area(
+        "Descripción del grupo",
+        placeholder="¿Qué características define a este grupo? ¿Qué especies lo componen?",
+        height=100,
+    )
+
+    new_justification = st.text_area(
+        "Justificación / Argumento",
+        placeholder="¿Por qué es necesario este nuevo grupo? ¿Qué gap deja cubierto?",
+        height=120,
+    )
+
+    if st.button("✅ Proponer nuevo grupo", use_container_width=True, type="primary"):
+        if not all([new_code, new_name, new_description, new_justification]):
+            st.error("Completa todos los campos")
         else:
-            st.markdown("⏳ Pendiente")
+            try:
+                propose_new_group_detailed(
+                    new_code,
+                    new_name,
+                    new_description,
+                    new_justification,
+                    expert_name,
+                    db
+                )
+                st.success("✅ Propuesta de nuevo grupo enviada")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error: {e}")
 
-    with cols[2]:
-        st.markdown(CONF_ICON.get(confidence, f"⚪ {confidence}"))
+    st.divider()
 
-    with cols[3]:
-        if st.button("✅", key=f"ok_{taxon}", help="Confirmar: clasificación correcta"):
-            validate_species(taxon, expert, db)
-            st.rerun()
+    # Ver propuestas pendientes
+    st.markdown("### 📋 Propuestas Pendientes")
+    try:
+        proposals = db.collection("groups_proposals").stream()
+        proposals_list = [p.to_dict() for p in proposals]
 
-    with cols[4]:
-        if st.button("↔", key=f"mv_{taxon}", help="Mover a otro grupo"):
-            dlg_move(taxon, selected_code)
+        if not proposals_list:
+            st.info("No hay propuestas aún")
+        else:
+            for prop in proposals_list:
+                status_color = "🟡" if prop.get("status") == "pending" else "✅"
+                st.markdown(f"{status_color} **{prop.get('group_code')} - {prop.get('group_name', 'N/A')}**")
+                st.caption(f"Propuesto por: {prop.get('proposed_by')}")
 
-    with cols[5]:
-        if st.button("💡", key=f"np_{taxon}", help="Proponer nuevo grupo funcional"):
-            dlg_propose(taxon, selected_code)
+                if prop.get("type") == "deletion":
+                    st.markdown(f"**Razón para eliminar:** {prop.get('reason')}")
+                else:
+                    st.markdown(f"**Descripción:** {prop.get('description')}")
+                    st.markdown(f"**Justificación:** {prop.get('justification')}")
 
-    with cols[6]:
-        if st.button("🗑", key=f"rm_{taxon}", help="Quitar del modelo (no marino / irrelevante)"):
-            dlg_remove(taxon, selected_code)
+                st.divider()
 
-# ── Removed taxa accordion ─────────────────────────────────────────────────────
-removed_all = get_removed_species(db)
-if not removed_all.empty and "original_code" in removed_all.columns:
-    group_removed = removed_all[removed_all["original_code"] == selected_code]
-    if not group_removed.empty:
-        st.divider()
-        with st.expander(f"🗑️ Taxa removidos de este grupo ({len(group_removed)}) — click para ver"):
-            r_hcols = st.columns([5, 3, 2])
-            r_hcols[0].markdown("**Taxon**")
-            r_hcols[1].markdown("**Removido por**")
-            r_hcols[2].markdown("**Restaurar**")
-            for _, rrow in group_removed.iterrows():
-                rt = rrow["taxon"]
-                by = rrow.get("last_modified_by", "—")
-                rc1, rc2, rc3 = st.columns([5, 3, 2])
-                rc1.markdown(f"~~{rt}~~")
-                rc2.markdown(by)
-                if rc3.button("↩ Restaurar", key=f"rst_{rt}"):
-                    restore_species(rt, rrow["original_code"], rrow["original_group"], expert, db)
-                    st.rerun()
+    except Exception as e:
+        st.error(f"Error cargando propuestas: {e}")
+
+# ── TAB 3: Estadísticas ────────────────────────────────────────────────────────
+with tab3:
+    st.markdown("### 📊 Resumen Estadístico")
+
+    if not groups_summary:
+        st.info("No hay datos para mostrar")
+    else:
+        # Tabla de grupos
+        table_data = []
+        for code, info in groups_summary.items():
+            rating_info = ratings_summary.get(code, {})
+            avg_rating = rating_info.get("avg_rating", 0)
+            rating_count = rating_info.get("count", 0)
+
+            table_data.append({
+                "Código": code,
+                "Grupo": info["name"],
+                "Total": info["total"],
+                "Validados": info["validated"],
+                "% Val.": f"{info['validated']/max(info['total'], 1)*100:.0f}%",
+                "Rating": f"{avg_rating:.1f}⭐ ({rating_count})" if avg_rating > 0 else "—",
+            })
+
+        df_summary = pd.DataFrame(table_data)
+        st.dataframe(df_summary, use_container_width=True)
+
+        # Gráficos
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("#### Especies por Grupo")
+            chart_data = {row["Código"]: row["Total"] for row in table_data}
+            st.bar_chart(chart_data)
+
+        with col2:
+            st.markdown("#### % Validación por Grupo")
+            val_data = {}
+            for row in table_data:
+                pct = int(row["% Val."].rstrip("%"))
+                val_data[row["Código"]] = pct
+            st.bar_chart(val_data)

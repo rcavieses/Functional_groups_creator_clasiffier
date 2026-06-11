@@ -70,7 +70,7 @@ if not st.session_state.auth:
         if not email.strip() or not password:
             st.error("Ingresa correo y contraseña.")
         else:
-            with st.spinner("Verificando…"):
+            with st.spinner("Verificando… (puede tardar hasta 2 min si la base de datos estaba inactiva)"):
                 try:
                     auth = sign_in(email.strip(), password)
                     st.session_state.auth = auth

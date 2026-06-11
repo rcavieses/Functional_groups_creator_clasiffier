@@ -107,8 +107,16 @@ def get_db():
         max_overflow=2,
         connect_args={"timeout": 30, "login_timeout": 30},
     )
-    _ensure_tables(engine)
     return engine
+
+
+def _ensure_tables_on_startup(engine):
+    """Called once per session after the engine is ready. Separated from get_db() so a
+    transient Azure SQL auto-resume error doesn't poison the @st.cache_resource engine."""
+    if st.session_state.get("_tables_ensured"):
+        return
+    _ensure_tables(engine)
+    st.session_state["_tables_ensured"] = True
 
 
 def _ensure_tables(engine):
@@ -179,9 +187,19 @@ def _ensure_tables(engine):
             UNIQUE (group_code, expert_email)
         )""",
     ]
-    with engine.begin() as conn:
-        for stmt in ddl:
-            conn.execute(text(stmt))
+    import time
+    last_exc = None
+    for attempt in range(4):
+        try:
+            with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+                for stmt in ddl:
+                    conn.execute(text(stmt))
+            return
+        except Exception as e:
+            last_exc = e
+            # Azure SQL serverless auto-resume takes ~60-90 s; back off gradually
+            time.sleep(20 * (attempt + 1))
+    raise last_exc
 
 
 # ── Auth ───────────────────────────────────────────────────────────────────────
@@ -190,6 +208,7 @@ def sign_in(email: str, password: str) -> dict:
     from sqlalchemy import text
 
     engine = get_db()
+    _ensure_tables_on_startup(engine)
 
     def _query():
         with engine.connect() as conn:
@@ -612,14 +631,8 @@ def send_password_reset(email: str) -> str:
     return new_password
 
 
-# ── Ensure new tables exist (safe to call multiple times) ─────────────────────
-
 def _ensure_new_tables(db):
-    """Create group_descriptions and group_assignments if missing. Guards with session state."""
-    if st.session_state.get("_new_tables_ensured"):
-        return
-    _ensure_tables(db)
-    st.session_state["_new_tables_ensured"] = True
+    _ensure_tables_on_startup(db)
 
 
 # ── Group descriptions ─────────────────────────────────────────────────────────

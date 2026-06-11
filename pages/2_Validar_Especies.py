@@ -50,6 +50,11 @@ def load_groups() -> dict[str, str]:
 all_groups = load_groups()
 nav_groups = {c: n for c, n in all_groups.items() if not c.startswith("PROP_")}
 
+# Add UNCLASSIFIED dynamically if there are species there
+_summary_check = get_groups_summary(db)
+if "UNCLASSIFIED" in _summary_check:
+    nav_groups["UNCLASSIFIED"] = "Sin clasificar"
+
 
 # ── Dialogs ────────────────────────────────────────────────────────────────────
 
@@ -175,6 +180,13 @@ if not selected_code:
 
 group_name = nav_groups.get(selected_code, selected_code)
 st.title(f"`{selected_code}` — {group_name}")
+
+if selected_code == "UNCLASSIFIED":
+    st.warning(
+        "⚠️ Estas especies **no tienen grupo asignado**. "
+        "Usa ↔ para moverlas a un grupo existente o 💡 para proponer un grupo nuevo. "
+        "No confirmes especies aquí — deben ser reclasificadas."
+    )
 
 with st.spinner("Cargando especies del grupo…"):
     species_df = get_species_for_group(selected_code, db)

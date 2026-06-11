@@ -92,7 +92,7 @@ with tab1:
             view_mode = "Todos los grupos"
             st.caption("Sin asignaciones aún — puedes calificar cualquier grupo.")
 
-        all_codes = sorted(groups_summary.keys())
+        all_codes = sorted(c for c in groups_summary.keys() if c != "UNCLASSIFIED")
         if view_mode == "Mis grupos asignados" and assignments_exist:
             display_codes = [c for c in all_codes if c in my_assignments]
         else:
@@ -327,6 +327,8 @@ with tab3:
     else:
         table_data = []
         for code, info in groups_summary.items():
+            if code == "UNCLASSIFIED":
+                continue
             rating_info = ratings_summary.get(code, {})
             avg_rating = rating_info.get("avg_rating", 0)
             rating_count = rating_info.get("count", 0)

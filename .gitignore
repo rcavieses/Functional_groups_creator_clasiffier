@@ -41,3 +41,4 @@ output/expert_credentials.csv
 
 # Streamlit secrets (contienen credenciales)
 .streamlit/secrets.toml
+expertos_invitados.csv

@@ -318,7 +318,7 @@ with tab_dist:
         pivot = assignments_df.pivot_table(
             index="group_code",
             columns="expert_email",
-            values="group_code",
+            values="assigned_by",
             aggfunc=lambda x: "✅",
             fill_value="—",
         )

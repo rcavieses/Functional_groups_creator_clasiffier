@@ -318,9 +318,11 @@ with tab_dist:
         pivot = assignments_df.pivot_table(
             index="group_code",
             columns="expert_email",
+            values="group_code",
             aggfunc=lambda x: "✅",
             fill_value="—",
         )
+        pivot.columns.name = None
         pivot.columns = [c.split("@")[0] for c in pivot.columns]
         pivot.index.name = "Grupo"
 

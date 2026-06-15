@@ -250,6 +250,19 @@ def is_admin(auth: dict) -> bool:
     return auth.get("email", "").lower() in admin_emails
 
 
+def get_admin_emails() -> set:
+    """Return all emails that have admin privileges (DB flag or ADMIN_EMAILS secret)."""
+    engine = get_db()
+    df = pd.read_sql("SELECT email FROM users WHERE is_admin = 1", engine)
+    admin_set = {row.lower() for row in df["email"].dropna()}
+    admin_str = _get_secret("ADMIN_EMAILS", "")
+    for e in admin_str.split(","):
+        e = e.strip().lower()
+        if e:
+            admin_set.add(e)
+    return admin_set
+
+
 # ── Reads ──────────────────────────────────────────────────────────────────────
 
 def is_imported(db) -> bool:

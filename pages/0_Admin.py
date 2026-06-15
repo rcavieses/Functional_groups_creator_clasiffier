@@ -6,6 +6,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 import streamlit as st
 from sql_client import (
     is_admin,
+    get_admin_emails,
     list_experts,
     create_expert,
     update_expert_name,
@@ -234,7 +235,11 @@ with tab_dist:
         assignments_df = get_group_assignments(db, force=True)
         assignment_stats = get_assignment_stats(db)
 
-    active_experts = [u for u in experts if not u["disabled"]]
+    admin_emails = get_admin_emails()
+    active_experts = [
+        u for u in experts
+        if not u["disabled"] and u["email"].lower() not in admin_emails
+    ]
     G = len(groups_summary)
     N = len(active_experts)
 
@@ -315,15 +320,10 @@ with tab_dist:
     if assignments_df.empty:
         st.info("No hay asignaciones. Usa el botón de arriba para distribuir los grupos.")
     else:
-        pivot = assignments_df.pivot_table(
-            index="group_code",
-            columns="expert_email",
-            values="assigned_by",
-            aggfunc=lambda x: "✅",
-            fill_value="—",
-        )
-        pivot.columns.name = None
+        counts = pd.crosstab(assignments_df["group_code"], assignments_df["expert_email"])
+        pivot = counts.map(lambda x: "✅" if x > 0 else "—")
         pivot.columns = [c.split("@")[0] for c in pivot.columns]
+        pivot.columns.name = None
         pivot.index.name = "Grupo"
 
         raw_stats = assignments_df.groupby("group_code").size().rename("# Evaluadores")

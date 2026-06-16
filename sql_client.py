@@ -361,6 +361,36 @@ def load_group_ratings(db, force: bool = False) -> pd.DataFrame:
     return df
 
 
+def get_my_group_rating(group_code: str, expert: str, db) -> dict | None:
+    """Return this expert's existing rating for a group as {'rating', 'comment'}, or None.
+
+    Handles the schema drift where the identity column may be named `expert` or `rated_by`.
+    """
+    df = load_group_ratings(db)
+    if df.empty or "group_code" not in df.columns:
+        return None
+    id_cols = [c for c in ("expert", "rated_by") if c in df.columns]
+    if not id_cols:
+        return None
+
+    id_mask = None
+    for c in id_cols:
+        m = df[c] == expert
+        id_mask = m if id_mask is None else (id_mask | m)
+    match = df[(df["group_code"] == group_code) & id_mask]
+    if match.empty:
+        return None
+
+    row = match.iloc[-1]
+    comment = row.get("comment")
+    if comment is None or (isinstance(comment, float) and pd.isna(comment)):
+        comment = ""
+    return {
+        "rating": int(row["rating"]) if pd.notna(row["rating"]) else None,
+        "comment": str(comment),
+    }
+
+
 def get_group_rating_summary(db) -> dict:
     ratings_df = load_group_ratings(db)
     if ratings_df.empty:

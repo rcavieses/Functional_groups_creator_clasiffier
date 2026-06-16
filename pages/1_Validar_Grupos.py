@@ -21,6 +21,7 @@ from sql_client import (
     load_species,
     get_groups_summary,
     rate_group,
+    get_my_group_rating,
     propose_group_deletion,
     propose_new_group_detailed,
     get_group_rating_summary,
@@ -143,6 +144,11 @@ with tab1:
                         else:
                             st.markdown("⭐ **Sin calificaciones aún**")
 
+                        # Calificación propia de este experto (si ya calificó)
+                        my_rating = get_my_group_rating(group_code, expert_name, db)
+                        if my_rating and my_rating["rating"]:
+                            st.caption(f"📝 Tu calificación actual: **{my_rating['rating']}⭐** — puedes modificarla")
+
                         st.divider()
 
                         # Acciones
@@ -150,21 +156,25 @@ with tab1:
 
                         col_a, col_b = st.columns(2)
 
+                        default_rating = my_rating["rating"] if my_rating and my_rating["rating"] else 1
                         with col_a:
                             rating = st.selectbox(
                                 "Calificación",
                                 [1, 2, 3, 4, 5],
+                                index=default_rating - 1,
                                 key=f"rating_{group_code}",
                                 label_visibility="collapsed",
                             )
 
+                        rate_btn_label = "✏️ Modificar" if my_rating else "⭐ Calificar"
                         with col_b:
-                            if st.button("⭐ Calificar", key=f"btn_rate_{group_code}", use_container_width=True):
+                            if st.button(rate_btn_label, key=f"btn_rate_{group_code}", use_container_width=True):
                                 st.session_state[f"show_comment_{group_code}"] = True
 
                         if st.session_state.get(f"show_comment_{group_code}"):
                             comment = st.text_area(
                                 "Comentario (opcional)",
+                                value=(my_rating["comment"] if my_rating else ""),
                                 key=f"comment_{group_code}",
                                 height=60,
                             )

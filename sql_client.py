@@ -187,12 +187,33 @@ def _ensure_tables(engine):
             UNIQUE (group_code, expert_email)
         )""",
     ]
+
+    # Column migrations for tables created by an earlier schema version. The CREATE TABLE
+    # statements above are guarded by IF NOT EXISTS, so columns added later (e.g. `expert`
+    # in group_ratings) are NOT applied to tables that already exist. These idempotent
+    # ALTERs backfill the missing columns.
+    migrations = [
+        ("group_ratings", "expert", "NVARCHAR(255)"),
+        ("audit_log", "expert", "NVARCHAR(255)"),
+    ]
+    migration_ddl = [
+        f"""IF EXISTS (SELECT * FROM sysobjects WHERE name='{table}' AND xtype='U')
+        AND NOT EXISTS (
+            SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME='{table}' AND COLUMN_NAME='{column}'
+        )
+        ALTER TABLE {table} ADD {column} {coltype}"""
+        for table, column, coltype in migrations
+    ]
+
     import time
     last_exc = None
     for attempt in range(4):
         try:
             with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
                 for stmt in ddl:
+                    conn.execute(text(stmt))
+                for stmt in migration_ddl:
                     conn.execute(text(stmt))
             return
         except Exception as e:

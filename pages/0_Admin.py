@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 import streamlit as st
+import pandas as pd
 from sql_client import (
     is_admin,
     get_admin_emails,

@@ -503,15 +503,35 @@ def rate_group(group_code: str, group_name: str, rating: int, comment: str, expe
     from sqlalchemy import text
 
     with db.begin() as conn:
+        # The expert identity column has drifted across schema versions: the code-defined
+        # schema names it `expert`, while the original Azure table used `rated_by` (NOT NULL).
+        # A given deployment may have either or both, so adapt to whatever exists and fill
+        # every present identity column to satisfy NOT NULL constraints.
+        existing = {
+            row[0].lower()
+            for row in conn.execute(
+                text("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'group_ratings'")
+            )
+        }
+        id_cols = [c for c in ("expert", "rated_by") if c in existing]
+
+        params = {"group_code": group_code, "group_name": group_name,
+                  "rating": rating, "comment": comment, "expert": expert}
+
+        if id_cols:
+            where_expert = " OR ".join(f"{c} = :expert" for c in id_cols)
+            conn.execute(
+                text(f"DELETE FROM group_ratings WHERE group_code = :group_code AND ({where_expert})"),
+                {"group_code": group_code, "expert": expert},
+            )
+
+        insert_cols = ["group_code", "group_name", "rating", "comment"] + id_cols
+        col_list = ", ".join(insert_cols)
+        # both `expert` and `rated_by` bind to the same :expert parameter
+        val_list = ", ".join(":expert" if c in id_cols else f":{c}" for c in insert_cols)
         conn.execute(
-            text("DELETE FROM group_ratings WHERE group_code = :group_code AND expert = :expert"),
-            {"group_code": group_code, "expert": expert},
-        )
-        conn.execute(
-            text("""INSERT INTO group_ratings (group_code, group_name, rating, comment, expert)
-                     VALUES (:group_code, :group_name, :rating, :comment, :expert)"""),
-            {"group_code": group_code, "group_name": group_name,
-             "rating": rating, "comment": comment, "expert": expert},
+            text(f"INSERT INTO group_ratings ({col_list}) VALUES ({val_list})"),
+            params,
         )
     if _GROUPS_RATINGS_KEY in st.session_state:
         del st.session_state[_GROUPS_RATINGS_KEY]

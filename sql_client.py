@@ -1085,3 +1085,99 @@ def get_group_validation_with_ratings(db) -> pd.DataFrame:
         df['validation_pct'] = (df['validated_count'] / df['total_species'].clip(lower=1) * 100).round(1)
         df['rating_stars'] = df['avg_rating'].apply(lambda x: '⭐' * int(x) if pd.notna(x) else '—')
     return df
+
+
+def get_groups_eligible_for_auto_validation(db) -> pd.DataFrame:
+    """Get groups that meet auto-validation criteria (avg_rating > 3, rating_count >= 3)."""
+    df = pd.read_sql(
+        """SELECT
+           group_code,
+           group_name,
+           ROUND(AVG(CAST(rating AS FLOAT)), 2) as avg_rating,
+           COUNT(*) as rating_count
+           FROM group_ratings
+           WHERE rating IS NOT NULL
+           GROUP BY group_code, group_name
+           HAVING AVG(CAST(rating AS FLOAT)) > 3 AND COUNT(*) >= 3
+           ORDER BY AVG(CAST(rating AS FLOAT)) DESC""",
+        db
+    )
+    return df
+
+
+def auto_validate_groups_by_rating(db, system_user: str = "system") -> dict:
+    """Automatically validate all taxa in groups with avg_rating > 3 and rating_count >= 3.
+
+    Returns:
+        dict with keys: 'groups_validated', 'taxa_validated', 'summary'
+    """
+    from sqlalchemy import text
+
+    now = _now()
+
+    # Get eligible groups
+    eligible = pd.read_sql(
+        """SELECT group_code
+           FROM group_ratings
+           WHERE rating IS NOT NULL
+           GROUP BY group_code
+           HAVING AVG(CAST(rating AS FLOAT)) > 3 AND COUNT(*) >= 3""",
+        db
+    )
+
+    if eligible.empty:
+        return {
+            'groups_validated': 0,
+            'taxa_validated': 0,
+            'summary': 'No hay grupos que cumplan los criterios de validación automática'
+        }
+
+    groups_to_validate = eligible['group_code'].tolist()
+
+    # Count taxa that will be validated
+    placeholders = ','.join(f"'{g}'" for g in groups_to_validate)
+    count_df = pd.read_sql(
+        f"""SELECT COUNT(*) as count FROM species
+           WHERE current_code IN ({placeholders})
+           AND status = 'pending'""",
+        db
+    )
+    taxa_count = int(count_df.iloc[0]['count']) if not count_df.empty else 0
+
+    # Update species to validated
+    with db.begin() as conn:
+        for group_code in groups_to_validate:
+            conn.execute(
+                text("""UPDATE species
+                       SET status = 'validated', last_modified_by = :user, last_modified_at = :now
+                       WHERE current_code = :code AND status = 'pending'"""),
+                {
+                    'code': group_code,
+                    'user': system_user,
+                    'now': now
+                }
+            )
+
+            # Log the action
+            conn.execute(
+                text("""INSERT INTO audit_log (taxon, action, expert, from_code, note, timestamp)
+                       VALUES (:taxon, :action, :expert, :from_code, :note, :timestamp)"""),
+                {
+                    'taxon': f'[Grupo: {group_code}]',
+                    'action': 'auto_validate_by_rating',
+                    'expert': system_user,
+                    'from_code': group_code,
+                    'note': f'Validación automática: promedio de calificación > 3, >= 3 calificaciones',
+                    'timestamp': now
+                }
+            )
+
+    # Clear cache
+    if _SESSION_KEY in st.session_state:
+        del st.session_state[_SESSION_KEY]
+
+    return {
+        'groups_validated': len(groups_to_validate),
+        'taxa_validated': taxa_count,
+        'summary': f'✅ Validados {len(groups_to_validate)} grupos y {taxa_count} taxa automáticamente'
+    }

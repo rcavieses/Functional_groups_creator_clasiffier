@@ -17,6 +17,7 @@ import streamlit as st
 import pandas as pd
 from sql_client import (
     get_db,
+    is_admin,
     get_recent_comments,
     get_most_commented_groups,
     get_proposals_summary,
@@ -28,6 +29,8 @@ from sql_client import (
     get_unvalidated_groups,
     get_fully_validated_groups,
     get_group_validation_with_ratings,
+    get_groups_eligible_for_auto_validation,
+    auto_validate_groups_by_rating,
 )
 
 st.set_page_config(page_title="Dashboard", page_icon="📈", layout="wide")
@@ -67,6 +70,7 @@ with st.spinner("Cargando estadísticas…"):
     unvalidated_groups = get_unvalidated_groups(db)
     fully_validated = get_fully_validated_groups(db)
     validation_with_ratings = get_group_validation_with_ratings(db)
+    eligible_for_auto = get_groups_eligible_for_auto_validation(db)
 
 # ── KPIs principales ───────────────────────────────────────────────────────────
 st.markdown("### 📊 Resumen General")
@@ -89,6 +93,50 @@ with col4:
     st.metric("🗑️ Eliminaciones Propuestas", del_proposals)
 
 st.markdown("---")
+
+# ── Auto-validation section ────────────────────────────────────────────────────
+if not eligible_for_auto.empty:
+    st.markdown("### ⚡ Validación Automática Disponible")
+
+    col_info, col_action = st.columns([3, 1])
+
+    with col_info:
+        st.markdown(f"""
+        **{len(eligible_for_auto)} grupos** cumplen los criterios de validación automática:
+        - Calificación promedio > 3 ⭐
+        - Mínimo 3 calificaciones recibidas
+
+        Estos grupos pueden ser validados automáticamente:
+        """)
+
+        # Mostrar grupos elegibles
+        for idx, row in eligible_for_auto.iterrows():
+            rating_display = "⭐" * int(row['avg_rating'])
+            st.caption(
+                f"• **{row['group_name']}** ({row['group_code']}) — "
+                f"{rating_display} {row['avg_rating']}/5 ({int(row['rating_count'])} calificaciones)"
+            )
+
+    with col_action:
+        user_is_admin = is_admin(auth)
+        if user_is_admin:
+            if st.button("✅ Validar Automáticamente", use_container_width=True, type="primary"):
+                with st.spinner("Ejecutando validación automática…"):
+                    result = auto_validate_groups_by_rating(db, system_user=expert_name)
+                    st.success(result['summary'])
+                    st.info(
+                        f"📊 Resumen:\n"
+                        f"- Grupos validados: {result['groups_validated']}\n"
+                        f"- Taxa validados: {result['taxa_validated']}"
+                    )
+                    st.rerun()
+        else:
+            st.warning("⚠️ Solo administradores pueden ejecutar validación automática.", icon="🔒")
+
+    st.markdown("---")
+else:
+    st.info("✅ No hay grupos pendientes de validación automática en este momento.")
+    st.markdown("---")
 
 # ── Main tabs ──────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([

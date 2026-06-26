@@ -186,6 +186,20 @@ if not selected_code:
 group_name = nav_groups.get(selected_code, selected_code)
 st.title(f"`{selected_code}` — {group_name}")
 
+# Group selector in main area
+col_group_select, col_spacer = st.columns([2, 3])
+with col_group_select:
+    new_group = st.selectbox(
+        "📌 Cambiar grupo:",
+        options=list(nav_groups.keys()),
+        format_func=lambda x: f"{x} — {nav_groups.get(x, x)}",
+        index=list(nav_groups.keys()).index(selected_code),
+        key="main_group_selector",
+    )
+    if new_group != selected_code:
+        st.session_state.selected_group = new_group
+        st.rerun()
+
 if selected_code == "UNCLASSIFIED":
     st.warning(
         "⚠️ Estas especies **no tienen grupo asignado**. "

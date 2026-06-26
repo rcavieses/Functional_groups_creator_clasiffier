@@ -13,7 +13,7 @@ from sql_client import (
     get_removed_species,
 )
 
-st.set_page_config(page_title="Resultados Finales", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Resultados", page_icon="📊", layout="wide")
 
 if not st.session_state.get("auth"):
     st.warning("⚠️ Debes iniciar sesión primero. Ve a la página de **Inicio**.")
@@ -21,7 +21,7 @@ if not st.session_state.get("auth"):
 
 db = get_db()
 
-st.title("📊 Resultados Finales")
+st.title("📊 Resultados")
 st.caption("Vista consolidada de la validación por expertos")
 
 col_refresh, _ = st.columns([1, 5])

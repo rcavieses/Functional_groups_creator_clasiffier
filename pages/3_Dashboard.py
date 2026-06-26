@@ -24,6 +24,10 @@ from sql_client import (
     get_expert_activity,
     get_group_rating_stats,
     get_recent_activity,
+    get_groups_validation_status,
+    get_unvalidated_groups,
+    get_fully_validated_groups,
+    get_group_validation_with_ratings,
 )
 
 st.set_page_config(page_title="Dashboard", page_icon="📈", layout="wide")
@@ -59,6 +63,10 @@ with st.spinner("Cargando estadísticas…"):
     expert_activity = get_expert_activity(db)
     group_ratings = get_group_rating_stats(db)
     recent_activity = get_recent_activity(db)
+    validation_status = get_groups_validation_status(db)
+    unvalidated_groups = get_unvalidated_groups(db)
+    fully_validated = get_fully_validated_groups(db)
+    validation_with_ratings = get_group_validation_with_ratings(db)
 
 # ── KPIs principales ───────────────────────────────────────────────────────────
 st.markdown("### 📊 Resumen General")
@@ -83,7 +91,8 @@ with col4:
 st.markdown("---")
 
 # ── Main tabs ──────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "✅ Estado de Validación",
     "💬 Comentarios Recientes",
     "⭐ Grupos Más Comentados",
     "💡 Propuestas Pendientes",
@@ -91,8 +100,98 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📋 Actividad Reciente"
 ])
 
-# ── TAB 1: Comentarios Recientes ───────────────────────────────────────────────
+# ── TAB 1: Estado de Validación ────────────────────────────────────────────────
 with tab1:
+    st.markdown("### 📊 Estado de Validación por Grupo")
+
+    if validation_with_ratings.empty:
+        st.info("No hay grupos para validar.")
+    else:
+        # Resumen visual
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            total_groups = len(validation_with_ratings)
+            st.metric("📌 Total de Grupos", total_groups)
+
+        with col2:
+            fully_val = len(fully_validated)
+            st.metric("✅ 100% Validados", fully_val)
+
+        with col3:
+            no_val = len(unvalidated_groups)
+            st.metric("⏳ Sin Validar", no_val)
+
+        with col4:
+            avg_completion = validation_with_ratings['validation_pct'].mean()
+            st.metric("📈 Progreso Promedio", f"{avg_completion:.1f}%")
+
+        st.markdown("---")
+
+        # Filtro y tabla
+        st.markdown("#### Detalle por Grupo")
+
+        # Crear vista con scores
+        view_df = validation_with_ratings.copy()
+        view_df = view_df.rename(columns={
+            "group_code": "Código",
+            "group_name": "Nombre",
+            "total_species": "Total Taxa",
+            "validated_count": "Validados",
+            "pending_count": "Pendientes",
+            "validation_pct": "% Validación",
+            "avg_rating": "⭐ Promedio",
+            "rating_count": "# Calificaciones",
+            "comment_count": "# Comentarios"
+        })
+
+        # Seleccionar columnas para mostrar
+        display_cols = ["Código", "Nombre", "Total Taxa", "Validados", "Pendientes", "% Validación", "⭐ Promedio", "# Calificaciones"]
+        view_df = view_df[display_cols]
+
+        # Formatear y mostrar
+        st.dataframe(
+            view_df.sort_values("% Validación", ascending=False),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "% Validación": st.column_config.ProgressColumn(
+                    "% Validación", min_value=0, max_value=100
+                ),
+                "⭐ Promedio": st.column_config.NumberColumn(format="%.2f")
+            }
+        )
+
+        st.markdown("---")
+
+        # Secciones expandibles
+        col_novalidated, col_validated = st.columns(2)
+
+        with col_novalidated:
+            with st.expander(f"⏳ Grupos sin validar ({len(unvalidated_groups)})"):
+                if unvalidated_groups.empty:
+                    st.success("Todos los grupos tienen al menos una validación.")
+                else:
+                    for idx, row in unvalidated_groups.iterrows():
+                        st.markdown(
+                            f"**{row['group_name']}** ({row['group_code']})\n"
+                            f"→ {int(row['total_species'])} taxa pendientes"
+                        )
+
+        with col_validated:
+            with st.expander(f"✅ Grupos 100% validados ({len(fully_validated)})"):
+                if fully_validated.empty:
+                    st.info("Aún no hay grupos completamente validados.")
+                else:
+                    for idx, row in fully_validated.iterrows():
+                        st.markdown(
+                            f"✅ **{row['group_name']}** ({row['group_code']})\n"
+                            f"→ {int(row['total_species'])} taxa validados"
+                        )
+
+
+# ── TAB 2: Comentarios Recientes ───────────────────────────────────────────────
+with tab2:
     st.markdown("### Comentarios Recientes (últimas 20)")
 
     if recent_comments.empty:
@@ -113,8 +212,8 @@ with tab1:
                     st.caption(f"🕐 {timestamp}")
 
 
-# ── TAB 2: Grupos Más Comentados ───────────────────────────────────────────────
-with tab2:
+# ── TAB 3: Grupos Más Comentados ───────────────────────────────────────────────
+with tab3:
     st.markdown("### Top 10 Grupos Más Comentados")
 
     if most_commented.empty:
@@ -165,8 +264,8 @@ with tab2:
                 st.divider()
 
 
-# ── TAB 3: Propuestas Pendientes ───────────────────────────────────────────────
-with tab3:
+# ── TAB 4: Propuestas Pendientes ───────────────────────────────────────────────
+with tab4:
     st.markdown("### 💡 Propuestas Pendientes de Evaluación")
 
     # Resumen visual
@@ -226,8 +325,8 @@ with tab3:
                         st.caption(f"👤 {row['proposed_by']}\n🕐 {row['proposed_at']}")
 
 
-# ── TAB 4: Actividad de Expertos ───────────────────────────────────────────────
-with tab4:
+# ── TAB 5: Actividad de Expertos ───────────────────────────────────────────────
+with tab5:
     st.markdown("### 👥 Actividad por Experto")
 
     if expert_activity.empty:
@@ -249,8 +348,8 @@ with tab4:
             )
 
 
-# ── TAB 5: Actividad Reciente ──────────────────────────────────────────────────
-with tab5:
+# ── TAB 6: Actividad Reciente ──────────────────────────────────────────────────
+with tab6:
     st.markdown("### 📋 Últimas Acciones (últimas 30)")
 
     if recent_activity.empty:

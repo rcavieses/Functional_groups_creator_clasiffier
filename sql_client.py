@@ -999,3 +999,89 @@ def get_recent_activity(db, limit: int = 30) -> pd.DataFrame:
     if not df.empty and "timestamp" in df.columns:
         df["timestamp"] = pd.to_datetime(df["timestamp"]).dt.strftime("%Y-%m-%d %H:%M")
     return df
+
+
+def get_groups_validation_status(db) -> pd.DataFrame:
+    """Get validation status for each group with species counts."""
+    df = pd.read_sql(
+        """SELECT
+           current_code as group_code,
+           current_group as group_name,
+           COUNT(*) as total_species,
+           SUM(CASE WHEN status = 'validated' THEN 1 ELSE 0 END) as validated_count,
+           SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+           SUM(CASE WHEN status = 'removed' THEN 1 ELSE 0 END) as removed_count
+           FROM species
+           WHERE status != 'removed' AND current_code IS NOT NULL
+           GROUP BY current_code, current_group
+           ORDER BY total_species DESC""",
+        db
+    )
+    if not df.empty:
+        df['validation_pct'] = (df['validated_count'] / df['total_species'].clip(lower=1) * 100).round(1)
+    return df
+
+
+def get_unvalidated_groups(db) -> pd.DataFrame:
+    """Get groups with 0% validation (all species pending)."""
+    df = pd.read_sql(
+        """SELECT
+           current_code as group_code,
+           current_group as group_name,
+           COUNT(*) as total_species
+           FROM species
+           WHERE status = 'pending' AND current_code IS NOT NULL
+           GROUP BY current_code, current_group
+           HAVING COUNT(*) = (
+               SELECT COUNT(*) FROM species s2
+               WHERE s2.current_code = species.current_code
+           )
+           ORDER BY total_species DESC""",
+        db
+    )
+    return df
+
+
+def get_fully_validated_groups(db) -> pd.DataFrame:
+    """Get groups with 100% validation (all species validated)."""
+    df = pd.read_sql(
+        """SELECT
+           current_code as group_code,
+           current_group as group_name,
+           COUNT(*) as total_species
+           FROM species
+           WHERE status = 'validated' AND current_code IS NOT NULL
+           GROUP BY current_code, current_group
+           HAVING COUNT(*) = (
+               SELECT COUNT(*) FROM species s2
+               WHERE s2.current_code = species.current_code
+           )
+           ORDER BY total_species DESC""",
+        db
+    )
+    return df
+
+
+def get_group_validation_with_ratings(db) -> pd.DataFrame:
+    """Get complete validation status with average ratings."""
+    df = pd.read_sql(
+        """SELECT
+           s.current_code as group_code,
+           s.current_group as group_name,
+           COUNT(DISTINCT s.taxon) as total_species,
+           SUM(CASE WHEN s.status = 'validated' THEN 1 ELSE 0 END) as validated_count,
+           SUM(CASE WHEN s.status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+           ROUND(AVG(CAST(gr.rating AS FLOAT)), 2) as avg_rating,
+           COUNT(DISTINCT gr.id) as rating_count,
+           SUM(CASE WHEN gr.comment IS NOT NULL AND gr.comment != '' THEN 1 ELSE 0 END) as comment_count
+           FROM species s
+           LEFT JOIN group_ratings gr ON s.current_code = gr.group_code
+           WHERE s.status != 'removed' AND s.current_code IS NOT NULL
+           GROUP BY s.current_code, s.current_group
+           ORDER BY total_species DESC""",
+        db
+    )
+    if not df.empty:
+        df['validation_pct'] = (df['validated_count'] / df['total_species'].clip(lower=1) * 100).round(1)
+        df['rating_stars'] = df['avg_rating'].apply(lambda x: '⭐' * int(x) if pd.notna(x) else '—')
+    return df

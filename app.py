@@ -147,6 +147,7 @@ st.markdown(
     "| Página | Descripción |\n"
     "|---|---|\n"
     "| **✅ Validar Grupos** | Revisa las especies de cada grupo. Confirma, mueve o quita taxa. |\n"
+    "| **📈 Dashboard** | Estadísticas generales, comentarios de otros expertos, propuestas pendientes. |\n"
     "| **📊 Resultados Finales** | Vista consolidada, grupos propuestos y descarga de resultados. |"
 )
 

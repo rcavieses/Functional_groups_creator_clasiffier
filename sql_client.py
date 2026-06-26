@@ -891,3 +891,111 @@ def import_classifications(classified_csv, groups_csv, db) -> int:
 
 def refresh_token(refresh_tok: str) -> dict:
     return {}
+
+
+# ── Dashboard analytics ────────────────────────────────────────────────────────
+
+def get_recent_comments(db, limit: int = 20) -> pd.DataFrame:
+    """Get recent comments from all experts, excluding current user."""
+    df = pd.read_sql(
+        f"""SELECT TOP {limit} group_code, group_name, comment, COALESCE(expert, rated_by) as expert, rated_at
+           FROM group_ratings
+           WHERE comment IS NOT NULL AND comment != ''
+           ORDER BY rated_at DESC""",
+        db
+    )
+    if not df.empty and "rated_at" in df.columns:
+        df["timestamp"] = pd.to_datetime(df["rated_at"]).dt.strftime("%Y-%m-%d %H:%M")
+        df = df.drop("rated_at", axis=1)
+    return df
+
+
+def get_most_commented_groups(db, limit: int = 10) -> pd.DataFrame:
+    """Get groups with most comments, ordered by count."""
+    df = pd.read_sql(
+        f"""SELECT TOP {limit}
+           group_code, group_name,
+           COUNT(*) as comment_count,
+           COUNT(DISTINCT expert) as expert_count
+           FROM group_ratings
+           WHERE comment IS NOT NULL AND comment != ''
+           GROUP BY group_code, group_name
+           ORDER BY comment_count DESC""",
+        db
+    )
+    return df
+
+
+def get_proposals_summary(db) -> dict:
+    """Get summary of proposals by type and status."""
+    df = pd.read_sql(
+        """SELECT type, status, COUNT(*) as count
+           FROM group_proposals
+           GROUP BY type, status""",
+        db
+    )
+    if df.empty:
+        return {"new_group": 0, "modification": 0, "deletion": 0, "pending": 0, "approved": 0}
+
+    result = {
+        "new_group": int(df[df["type"] == "new_group"]["count"].sum()) if "new_group" in df["type"].values else 0,
+        "modification": int(df[df["type"] == "modification"]["count"].sum()) if "modification" in df["type"].values else 0,
+        "deletion": int(df[df["type"] == "deletion"]["count"].sum()) if "deletion" in df["type"].values else 0,
+        "pending": int(df[df["status"] == "pending"]["count"].sum()) if "pending" in df["status"].values else 0,
+    }
+    return result
+
+
+def get_pending_proposals(db, limit: int = 15) -> pd.DataFrame:
+    """Get pending proposals with details."""
+    df = pd.read_sql(
+        f"""SELECT TOP {limit} id, type, group_code, group_name, reason, description, justification, proposed_by, proposed_at
+           FROM group_proposals
+           WHERE status = 'pending'
+           ORDER BY proposed_at DESC""",
+        db
+    )
+    if not df.empty and "proposed_at" in df.columns:
+        df["proposed_at"] = pd.to_datetime(df["proposed_at"]).dt.strftime("%Y-%m-%d %H:%M")
+    return df
+
+
+def get_expert_activity(db, limit: int = 10) -> pd.DataFrame:
+    """Get activity count by expert."""
+    df = pd.read_sql(
+        f"""SELECT TOP {limit} expert, COUNT(*) as actions_count
+           FROM audit_log
+           GROUP BY expert
+           ORDER BY actions_count DESC""",
+        db
+    )
+    return df
+
+
+def get_group_rating_stats(db) -> pd.DataFrame:
+    """Get average rating and comment count for each group."""
+    df = pd.read_sql(
+        """SELECT group_code, group_name,
+           AVG(CAST(rating AS FLOAT)) as avg_rating,
+           COUNT(*) as rating_count,
+           SUM(CASE WHEN comment IS NOT NULL AND comment != '' THEN 1 ELSE 0 END) as comment_count
+           FROM group_ratings
+           WHERE rating IS NOT NULL
+           GROUP BY group_code, group_name
+           ORDER BY avg_rating DESC, rating_count DESC""",
+        db
+    )
+    return df
+
+
+def get_recent_activity(db, limit: int = 30) -> pd.DataFrame:
+    """Get recent audit log entries."""
+    df = pd.read_sql(
+        f"""SELECT TOP {limit} taxon, action, expert, from_code, to_code, timestamp
+           FROM audit_log
+           ORDER BY timestamp DESC""",
+        db
+    )
+    if not df.empty and "timestamp" in df.columns:
+        df["timestamp"] = pd.to_datetime(df["timestamp"]).dt.strftime("%Y-%m-%d %H:%M")
+    return df

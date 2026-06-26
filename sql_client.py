@@ -195,6 +195,11 @@ def _ensure_tables(engine):
     migrations = [
         ("group_ratings", "expert", "NVARCHAR(255)"),
         ("audit_log", "expert", "NVARCHAR(255)"),
+        ("species", "family", "NVARCHAR(255)"),
+        ("species", "order_taxon", "NVARCHAR(255)"),
+        ("species", "class_taxon", "NVARCHAR(255)"),
+        ("species", "phylum", "NVARCHAR(255)"),
+        ("species", "kingdom", "NVARCHAR(255)"),
     ]
     migration_ddl = [
         f"""IF EXISTS (SELECT * FROM sysobjects WHERE name='{table}' AND xtype='U')

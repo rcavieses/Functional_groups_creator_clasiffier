@@ -137,6 +137,11 @@ with st.sidebar:
         horizontal=True,
     )
 
+    # Sidebar taxonomy filters
+    st.divider()
+    st.subheader("Filtrar Taxonomía")
+    st.caption("Selecciona para filtrar por nivel")
+
     summary = get_groups_summary(db)
 
     if "selected_group" not in st.session_state:
@@ -215,13 +220,47 @@ with col_filter:
         key="conf_filter",
     )
 
+# ── Taxonomy filters ───────────────────────────────────────────────────────────
+st.divider()
+st.subheader("Filtrar por Taxonomía")
+
+taxonomy_cols = st.columns(5)
+tax_filters = {}
+
+# Get unique values for each taxonomy level
+tax_levels = {
+    "kingdom": "Reino",
+    "phylum": "Filo",
+    "class_taxon": "Clase",
+    "order_taxon": "Orden",
+    "family": "Familia",
+}
+
+for idx, (col_name, label) in enumerate(tax_levels.items()):
+    if col_name in species_df.columns:
+        unique_vals = sorted(species_df[col_name].dropna().unique())
+        if unique_vals:
+            with taxonomy_cols[idx % 5]:
+                selected = st.multiselect(
+                    label,
+                    options=unique_vals,
+                    key=f"tax_filter_{col_name}",
+                    max_selections=10,
+                )
+                if selected:
+                    tax_filters[col_name] = selected
+
 if species_df.empty:
     st.stop()
 
-# Apply filter
+# Apply filters
 display_df = species_df.copy()
 if conf_filter != "Todos":
     display_df = display_df[display_df["confidence"] == conf_filter]
+
+# Apply taxonomy filters
+for col_name, values in tax_filters.items():
+    display_df = display_df[display_df[col_name].isin(values)]
 
 # Sort: pending first, then alphabetical
 status_order = {"pending": 0, "validated": 1}
@@ -233,8 +272,8 @@ display_df = display_df.sort_values(
 st.divider()
 
 # Column headers
-hcols = st.columns([5, 2, 2, 1, 1, 1, 1])
-hcols[0].markdown("**Taxon**")
+hcols = st.columns([4, 2, 2, 1, 1, 1, 1])
+hcols[0].markdown("**Taxon | Taxonomía**")
 hcols[1].markdown("**Estado**")
 hcols[2].markdown("**Confianza LLM**")
 hcols[3].markdown("**✅**")
@@ -251,12 +290,20 @@ for _, row in display_df.iterrows():
     confidence = row.get("confidence", "?")
     modified_by = row.get("last_modified_by") or ""
 
-    cols = st.columns([5, 2, 2, 1, 1, 1, 1])
+    cols = st.columns([4, 2, 2, 1, 1, 1, 1])
 
     with cols[0]:
         st.markdown(f"*{taxon}*")
+        # Show taxonomy info
+        tax_parts = []
+        for col_name, label in tax_levels.items():
+            val = row.get(col_name)
+            if val and pd.notna(val):
+                tax_parts.append(f"{label}: {val}")
+        if tax_parts:
+            st.caption(" | ".join(tax_parts))
         if modified_by:
-            st.caption(f"↳ {modified_by}")
+            st.caption(f"↳ Modificado por: {modified_by}")
 
     with cols[1]:
         if status == "validated":

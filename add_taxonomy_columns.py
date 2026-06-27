@@ -43,6 +43,7 @@ def add_taxonomy_columns(engine):
 
     columns_to_add = [
         ("family", "NVARCHAR(255)"),
+        ("genus", "NVARCHAR(255)"),
         ("order_taxon", "NVARCHAR(255)"),  # avoid 'order' reserved keyword
         ("class_taxon", "NVARCHAR(255)"),  # avoid 'class' reserved keyword
         ("phylum", "NVARCHAR(255)"),
@@ -121,6 +122,7 @@ def load_taxonomy_data(engine):
         updates.append({
             "taxon": taxon,
             "family": str(row["family"]) if pd.notna(row["family"]) else None,
+            "genus": str(row["genus"]) if pd.notna(row["genus"]) else None,
             "order_taxon": str(row["order"]) if pd.notna(row["order"]) else None,
             "class_taxon": str(row["class"]) if pd.notna(row["class"]) else None,
             "phylum": str(row["phylum"]) if pd.notna(row["phylum"]) else None,
@@ -148,6 +150,7 @@ def load_taxonomy_data(engine):
                     WHEN MATCHED THEN
                         UPDATE SET
                             s.family = t.family,
+                            s.genus = t.genus,
                             s.order_taxon = t.order_taxon,
                             s.class_taxon = t.class_taxon,
                             s.phylum = t.phylum,
@@ -173,7 +176,7 @@ def verify_data(engine):
     print("\n[3/3] Verifying data...")
 
     result = pd.read_sql(
-        "SELECT TOP 10 taxon, family, order_taxon, class_taxon, phylum, kingdom FROM species WHERE family IS NOT NULL",
+        "SELECT TOP 10 taxon, family, genus, order_taxon, class_taxon, phylum, kingdom FROM species WHERE family IS NOT NULL",
         engine
     )
 

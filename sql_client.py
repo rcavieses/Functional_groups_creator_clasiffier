@@ -196,6 +196,7 @@ def _ensure_tables(engine):
         ("group_ratings", "expert", "NVARCHAR(255)"),
         ("audit_log", "expert", "NVARCHAR(255)"),
         ("species", "family", "NVARCHAR(255)"),
+        ("species", "genus", "NVARCHAR(255)"),
         ("species", "order_taxon", "NVARCHAR(255)"),
         ("species", "class_taxon", "NVARCHAR(255)"),
         ("species", "phylum", "NVARCHAR(255)"),
@@ -343,6 +344,70 @@ def get_groups_summary(db) -> dict[str, dict]:
         else:
             summary[code]["pending"] += 1
     return summary
+
+
+def get_species_by_genus(db) -> dict[str, pd.DataFrame]:
+    """Group active species by genus. Returns {genus: DataFrame}."""
+    df = load_species(db)
+    if df.empty:
+        return {}
+    active = df[df["status"] != "removed"].copy()
+    grouped = {}
+    for genus, group_df in active.groupby("genus"):
+        if pd.notna(genus):
+            grouped[str(genus)] = group_df.sort_values("taxon").reset_index(drop=True)
+    return dict(sorted(grouped.items()))
+
+
+def get_species_by_family(db) -> dict[str, pd.DataFrame]:
+    """Group active species by family. Returns {family: DataFrame}."""
+    df = load_species(db)
+    if df.empty:
+        return {}
+    active = df[df["status"] != "removed"].copy()
+    grouped = {}
+    for family, group_df in active.groupby("family"):
+        if pd.notna(family):
+            grouped[str(family)] = group_df.sort_values("genus").reset_index(drop=True)
+    return dict(sorted(grouped.items()))
+
+
+def get_taxon_summary(taxon_name: str, taxon_type: str, db) -> dict:
+    """
+    Get summary of a genus or family: how many species, how many groups, etc.
+    taxon_type: 'genus' or 'family'
+    Returns: {"count": int, "groups": {code: name}, "species_by_group": {code: [taxon...]}}
+    """
+    df = load_species(db)
+    if df.empty:
+        return {"count": 0, "groups": {}, "species_by_group": {}}
+
+    col = "genus" if taxon_type == "genus" else "family"
+    active = df[(df["status"] != "removed") & (df[col] == taxon_name)].copy()
+
+    if active.empty:
+        return {"count": 0, "groups": {}, "species_by_group": {}}
+
+    groups_set = {}
+    species_by_group = {}
+
+    for _, row in active.iterrows():
+        code = row.get("current_code", "UNCLASSIFIED")
+        name = row.get("current_group", "")
+        taxon = row.get("taxon", "")
+
+        if code not in groups_set:
+            groups_set[code] = name
+            species_by_group[code] = []
+
+        species_by_group[code].append(taxon)
+
+    return {
+        "count": len(active),
+        "groups": groups_set,
+        "species_by_group": species_by_group,
+        "full_df": active,
+    }
 
 
 def load_proposed(db, force: bool = False) -> list[dict]:

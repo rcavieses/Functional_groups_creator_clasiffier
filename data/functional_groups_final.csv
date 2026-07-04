@@ -12,6 +12,7 @@ Number,Functional_Group,Code,Species_Composition,Error
 11,Vaquita,VAQ,"Phocoena sinus (endemic, critically endangered)",NA
 12,Baleen Whales,BWH,"Blue whale (Balaenoptera musculus), Fin whale (Balaenoptera physalus), Humpback whale (Megaptera novaeangliae), Gray whale (Eschrichtius robustus), Bryde's whale (Balaenoptera edeni)",NA
 13,Toothed Whales,TWH,"Sperm whale (Physeter macrocephalus), Cuvier's beaked whale (Ziphius cavirostris), other beaked whales",NA
+13.5,Orcas,ORC,"Killer whale / orca (Orcinus orca), apex predator feeding on marine mammals, fish, and sea turtles",NA
 14,Dolphins,DOL,"Common dolphin (Delphinus delphis), Bottlenose dolphin (Tursiops truncatus), Pacific white-sided dolphin (Lagenorhynchus obliquidens)",NA
 15,California Sea Lion,CSL,Zalophus californianus,NA
 16,Other Pinnipeds,OPI,"Guadalupe fur seal (Arctocephalus townsendi), Harbor seal (Phoca vitulina)",NA
@@ -35,7 +36,7 @@ Number,Functional_Group,Code,Species_Composition,Error
 34,Skipjack Tuna,SKJ,Katsuwonus pelamis,NA
 35,Other Tunas,OTU,"Bigeye tuna (Thunnus obesus), Albacore (Thunnus alalunga)",NA
 36,Billfish,BIL,"Blue marlin (Makaira nigricans), Striped marlin (Kajikia audax), Sailfish (Istiophorus platypterus), Swordfish (Xiphias gladius)",NA
-37,Dolphinfish,DOL,Coryphaena hippurus,NA
+37,Dolphinfish,DPF,Coryphaena hippurus,NA
 38,Lanternfish and Deep,LAN,"Myctophidae, Stomiidae and Ogcocephalidae including lampfish, viperfish, and batfish, mesopelagic and bathypelagic species",
 39,Large Mackerels,LAM,"Acanthocybium solandri, Scomberomorus spp. (large mackerels)",NA
 40,Pacific Sardine,SAR,Sardinops sagax,NA
@@ -75,12 +76,12 @@ Number,Functional_Group,Code,Species_Composition,Error
 74,Swimming Crabs,SWC,"Callinectes spp., portunid crabs",NA
 75,Benthic Crabs,BEC,"Cancer spp., Grapsidae, other benthic crabs",NA
 76,Sea Cucumbers,SCU,"Isostichopus fuscus, Holothuroidea",NA
-77,Sea Urchins,SUR,Pencil urchin (Eucidaris thouarsii),Purple urchin (Strongylocentrotus purpuratus)
+77,Sea Urchins,SEU,Pencil urchin (Eucidaris thouarsii),Purple urchin (Strongylocentrotus purpuratus)
 78,Sea Stars,SST,"Phataria unifascialis, Asteroidea",NA
 79,Brittle Stars,BST,"Ophiuroidea, various brittle star species",NA
 80,Polychaete Worms,PWO,"Polychaeta, various families of marine worms",NA
 81,Gastropods,GAS,"Turbo spp., other gastropods, sea snails",NA
 82,Bivalves,BIV,"Chione spp., Argopecten spp., Crassostrea spp., oysters, clams, scallops",NA
 83,Other Benthic Invertebrates,OBI,"Amphipods, isopods, other small benthic invertebrates",NA
-84,Corals and Anemones,COR,"Corals (various species), anemones, cnidarians",NA
+84,Corals and Anemones,CNA,"Corals (various species), anemones, cnidarians",NA
 85,Sponges and Tunicates,SPO,"Porifera, Tunicata, sessile filter feeders",NA

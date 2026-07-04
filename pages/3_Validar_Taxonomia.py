@@ -1,11 +1,8 @@
 """
 Validar Grupos Taxonómicos (Géneros/Familias) — Vista Detallada
 
-Interfaz para validar especies agrupadas por género o familia:
-- Ver todas las especies de un taxón
-- Ver qué grupos funcionales están asignados
-- Mover especies entre grupos (registra en audit_log)
-- Eliminar especies (registra en audit_log)
+Flujo: primero se elige el grupo funcional, luego se ven los géneros o
+familias que contiene, y se puede validar todo un género/familia de una vez.
 """
 
 from pathlib import Path
@@ -18,20 +15,20 @@ import pandas as pd
 from sql_client import (
     get_db,
     load_species,
-    get_species_by_genus,
-    get_species_by_family,
-    get_taxon_summary,
+    get_species_for_group,
     get_groups_summary,
+    get_removed_species,
     move_species,
     remove_species,
+    restore_species,
+    validate_species_bulk,
     expert_name_from_auth,
 )
 
-st.set_page_config(
-    page_title="Validar Taxonomía",
-    page_icon="🧬",
-    layout="wide",
-)
+DATA_DIR = Path(__file__).parent.parent / "data"
+GROUPS_CSV = DATA_DIR / "functional_groups_final.csv"
+
+st.set_page_config(page_title="Validar Taxonomía", page_icon="🧬", layout="wide")
 
 # ── Auth guard ─────────────────────────────────────────────────────────────────
 if not st.session_state.get("auth"):
@@ -39,144 +36,188 @@ if not st.session_state.get("auth"):
     st.stop()
 
 expert = expert_name_from_auth(st.session_state.auth)
-expert_email = st.session_state.get("auth", {}).get("email", "").lower()
 db = get_db()
+
+
+@st.cache_data
+def load_groups() -> dict[str, str]:
+    gdf = pd.read_csv(GROUPS_CSV)
+    return dict(zip(gdf["Code"].str.strip(), gdf["Functional_Group"].str.strip()))
+
+
+all_groups = load_groups()
+nav_groups = {c: n for c, n in all_groups.items() if not c.startswith("PROP_")}
+
+groups_summary = get_groups_summary(db)
+if "UNCLASSIFIED" in groups_summary:
+    nav_groups["UNCLASSIFIED"] = "Sin clasificar"
 
 st.title("🧬 Validación de Grupos Taxonómicos")
 st.caption(f"Experto: **{expert}**")
 st.markdown(
-    "Revisa y ajusta las asignaciones de especies agrupadas por **género** o **familia**. "
-    "Puedes mover especies entre grupos o marcarlas como eliminadas."
+    "Elige un **grupo funcional**, revisa qué **géneros o familias** contiene, "
+    "y valida todo un género/familia de una sola vez."
 )
 
 # ── Load data ──────────────────────────────────────────────────────────────────
 with st.spinner("Cargando datos…"):
     species_df = load_species(db)
-    groups_summary = get_groups_summary(db)
 
 if species_df.empty:
     st.error("No hay datos disponibles")
     st.stop()
 
-# ── Main interface ─────────────────────────────────────────────────────────────
+# ── 1. Select functional group ──────────────────────────────────────────────────
+group_options = sorted(nav_groups.keys())
 
-# 1. Choose taxonomy level
-col1, col2 = st.columns(2)
-with col1:
-    taxon_type = st.radio(
-        "Agrupar por:",
-        ["Género", "Familia"],
-        horizontal=True,
-        help="¿Agrupar especies por género o familia?",
-    )
 
-taxon_type_key = "genus" if taxon_type == "Género" else "family"
+def _fmt_group(code: str) -> str:
+    s = groups_summary.get(code, {"total": 0, "pending": 0})
+    return f"{code} — {nav_groups.get(code, code)} ({s.get('total', 0)} especies, {s.get('pending', 0)} pendientes)"
 
-# 2. Load grouped data
-if taxon_type_key == "genus":
-    taxa_dict = get_species_by_genus(db)
-    label = "Géneros"
-else:
-    taxa_dict = get_species_by_family(db)
-    label = "Familias"
 
-if not taxa_dict:
-    st.info(f"No hay {label.lower()} disponibles para validar.")
-    st.stop()
-
-# 3. Select taxon
-taxon_names = sorted(taxa_dict.keys())
-selected_taxon = st.selectbox(
-    f"Selecciona un {taxon_type.lower()}:",
-    taxon_names,
-    help=f"Elige el {taxon_type.lower()} a validar",
+selected_code = st.selectbox(
+    "1️⃣ Selecciona un grupo funcional:",
+    group_options,
+    format_func=_fmt_group,
 )
+group_name = nav_groups.get(selected_code, selected_code)
 
-# 4. Get taxon summary
-summary = get_taxon_summary(selected_taxon, taxon_type_key, db)
-species_df_taxon = summary.get("full_df", pd.DataFrame())
-
-if species_df_taxon.empty:
-    st.error(f"No hay datos para {selected_taxon}")
+group_df = get_species_for_group(selected_code, db)
+if group_df.empty:
+    st.info(f"El grupo **{group_name}** no tiene especies activas.")
     st.stop()
 
-# ── Display summary ────────────────────────────────────────────────────────────
-st.markdown(f"### 📌 {taxon_type}: **{selected_taxon}**")
+# ── 2. Choose taxonomy level to inspect the group by ────────────────────────────
+taxon_type = st.radio(
+    "2️⃣ Ver géneros o familias dentro de este grupo:",
+    ["Género", "Familia"],
+    horizontal=True,
+)
+tax_col = "genus" if taxon_type == "Género" else "family"
 
-col_count, col_groups, col_pending = st.columns(3)
-with col_count:
-    st.metric("Total de especies", summary["count"])
+if tax_col not in group_df.columns:
+    st.warning(f"No hay datos de {taxon_type.lower()} para este grupo.")
+    st.stop()
 
-with col_groups:
-    st.metric("Grupos funcionales asignados", len(summary["groups"]))
+breakdown = group_df.dropna(subset=[tax_col]).groupby(tax_col)
+taxa_list = sorted(breakdown.groups.keys())
 
-with col_pending:
-    pending_count = len(species_df_taxon[species_df_taxon["status"] != "validated"])
-    st.metric("Pendientes de validar", pending_count)
+if not taxa_list:
+    st.info(f"No hay {taxon_type.lower()}s registrados para las especies de este grupo.")
+else:
+    st.markdown(f"### 📌 {group_name} — {len(taxa_list)} {taxon_type.lower()}(s)")
 
-# ── Display groups distribution ────────────────────────────────────────────────
-if summary["groups"]:
-    st.markdown("#### Distribución por grupo funcional")
-    cols = st.columns(min(3, len(summary["groups"])))
-    for idx, (code, name) in enumerate(summary["groups"].items()):
-        count = len(summary["species_by_group"].get(code, []))
-        with cols[idx % 3]:
-            st.info(f"**{code}** — {name}\n{count} especie{'s' if count > 1 else ''}")
+    for taxon_name in taxa_list:
+        sub_df = breakdown.get_group(taxon_name).sort_values("taxon")
+        pending = sub_df[sub_df["status"] == "pending"]
+        pending_taxa = pending["taxon"].tolist()
 
-# ── Species table with actions ─────────────────────────────────────────────────
+        with st.expander(
+            f"{'🧬' if pending_taxa else '✅'} **{taxon_name}** — "
+            f"{len(sub_df)} especie(s), {len(pending_taxa)} pendiente(s)"
+        ):
+            col_validate, col_spacer = st.columns([1, 3])
+            with col_validate:
+                if st.button(
+                    "✅ Validar todo",
+                    key=f"bulk_validate_{tax_col}_{taxon_name}",
+                    disabled=not pending_taxa,
+                    help=f"Marca como validadas las {len(pending_taxa)} especies pendientes de {taxon_name}",
+                ):
+                    validate_species_bulk(pending_taxa, expert, db)
+                    st.success(f"{len(pending_taxa)} especies de {taxon_name} validadas.")
+                    st.rerun()
+
+            for _, row in sub_df.iterrows():
+                sp_name = row["taxon"]
+                status = row["status"]
+                c1, c2, c3, c4 = st.columns([3, 1, 1, 1])
+                with c1:
+                    st.write(sp_name)
+                with c2:
+                    st.caption("✅ Validado" if status == "validated" else "⏳ Pendiente")
+                with c3:
+                    if st.button("↔", key=f"mv_{tax_col}_{taxon_name}_{sp_name}", help="Mover a otro grupo"):
+                        st.session_state["dialog_action"] = "move"
+                        st.session_state["dialog_species_name"] = sp_name
+                        st.session_state["dialog_current_code"] = selected_code
+                        st.session_state["dialog_current_group"] = group_name
+                        st.rerun()
+                with c4:
+                    if st.button("🗑", key=f"rm_{tax_col}_{taxon_name}_{sp_name}", help="Eliminar"):
+                        st.session_state["dialog_action"] = "remove"
+                        st.session_state["dialog_species_name"] = sp_name
+                        st.session_state["dialog_current_code"] = selected_code
+                        st.session_state["dialog_current_group"] = group_name
+                        st.rerun()
+
+# ── 3. Ajustar asignaciones de especies (vista alternativa) ────────────────────
+st.markdown("---")
 st.markdown("#### 🔧 Ajustar asignaciones de especies")
 
-# Create a working copy for display
-display_df = species_df_taxon[
-    ["taxon", "current_code", "current_group", "status"]
-].copy()
-display_df = display_df.sort_values("taxon").reset_index(drop=True)
+view_by = st.selectbox(
+    "Ajustar asignaciones de especie por:",
+    ["Género", "Grupo", "Eliminados"],
+    help=(
+        "Género: agrupa la tabla de especies por género. "
+        "Grupo: lista plana de todas las especies del grupo funcional seleccionado. "
+        "Eliminados: muestra las especies eliminadas de este grupo, con opción de restaurar."
+    ),
+)
 
-# Add action buttons
-st.markdown("**Instrucciones:** Usa los botones para cada especie")
-
-for idx, row in display_df.iterrows():
-    species_name = row["taxon"]
-    current_code = row["current_code"]
-    current_group = row["current_group"]
-    status = row["status"]
-
-    # Create columns for each species row
-    col_species, col_code, col_status, col_move, col_remove = st.columns(
-        [2, 1.5, 1, 1, 1]
+if view_by == "Eliminados":
+    removed_all = get_removed_species(db)
+    group_removed = (
+        removed_all[removed_all["original_code"] == selected_code]
+        if not removed_all.empty and "original_code" in removed_all.columns
+        else pd.DataFrame()
     )
+    if group_removed.empty:
+        st.info("No hay especies eliminadas en este grupo.")
+    else:
+        for _, row in group_removed.iterrows():
+            rt = row["taxon"]
+            by = row.get("last_modified_by", "—")
+            rc1, rc2, rc3 = st.columns([5, 3, 2])
+            rc1.markdown(f"~~{rt}~~")
+            rc2.markdown(by)
+            if rc3.button("↩ Restaurar", key=f"restore_{rt}"):
+                restore_species(rt, row["original_code"], row["original_group"], expert, db)
+                st.rerun()
+else:
+    if view_by == "Género":
+        display_df = group_df.dropna(subset=["genus"]).sort_values(["genus", "taxon"])
+    else:
+        display_df = group_df.sort_values("taxon")
 
-    with col_species:
-        st.write(species_name)
-
-    with col_code:
-        st.caption(f"{current_code}")
-
-    with col_status:
-        status_badge = "✅ Validado" if status == "validated" else "⏳ Pendiente"
-        st.caption(status_badge)
-
-    with col_move:
-        if st.button("↔ Mover", key=f"move_{idx}_{species_name}"):
-            st.session_state["dialog_action"] = "move"
-            st.session_state["dialog_species_idx"] = idx
-            st.session_state["dialog_species_name"] = species_name
-            st.session_state["dialog_current_code"] = current_code
-            st.session_state["dialog_current_group"] = current_group
-            st.rerun()
-
-    with col_remove:
-        if st.button("🗑 Eliminar", key=f"remove_{idx}_{species_name}"):
-            st.session_state["dialog_action"] = "remove"
-            st.session_state["dialog_species_idx"] = idx
-            st.session_state["dialog_species_name"] = species_name
-            st.session_state["dialog_current_code"] = current_code
-            st.session_state["dialog_current_group"] = current_group
-            st.rerun()
+    for _, row in display_df.iterrows():
+        sp_name = row["taxon"]
+        status = row["status"]
+        col_species, col_extra, col_status, col_move, col_remove = st.columns([2, 1.5, 1, 1, 1])
+        with col_species:
+            st.write(sp_name)
+        with col_extra:
+            if view_by == "Género":
+                st.caption(str(row.get("genus", "")))
+        with col_status:
+            st.caption("✅ Validado" if status == "validated" else "⏳ Pendiente")
+        with col_move:
+            if st.button("↔ Mover", key=f"adj_move_{sp_name}"):
+                st.session_state["dialog_action"] = "move"
+                st.session_state["dialog_species_name"] = sp_name
+                st.session_state["dialog_current_code"] = selected_code
+                st.session_state["dialog_current_group"] = group_name
+                st.rerun()
+        with col_remove:
+            if st.button("🗑 Eliminar", key=f"adj_remove_{sp_name}"):
+                st.session_state["dialog_action"] = "remove"
+                st.session_state["dialog_species_name"] = sp_name
+                st.session_state["dialog_current_code"] = selected_code
+                st.session_state["dialog_current_group"] = group_name
+                st.rerun()
 
 # ── Dialog handlers (at page level) ────────────────────────────────────────────
-
-# Dialog: Move species
 if st.session_state.get("dialog_action") == "move":
     species_name = st.session_state.get("dialog_species_name", "")
     current_code = st.session_state.get("dialog_current_code", "")
@@ -186,37 +227,22 @@ if st.session_state.get("dialog_action") == "move":
         st.markdown(f"**{species_name}**")
         st.caption(f"Grupo actual: **{current_code}** — {current_group}")
 
-        # Get available groups
         available_groups = {
             f"{c} — {n}": (c, n)
-            for c, n in groups_summary.items()
+            for c, n in nav_groups.items()
             if c != current_code and c != "UNCLASSIFIED"
         }
 
         if available_groups:
-            choice = st.selectbox(
-                "Nuevo grupo:",
-                list(available_groups.keys()),
-                key="move_select",
-            )
+            choice = st.selectbox("Nuevo grupo:", list(available_groups.keys()), key="move_select")
             note = st.text_input(
-                "Nota (opcional):",
-                placeholder="¿Por qué mueves esta especie?",
-                key="move_note",
+                "Nota (opcional):", placeholder="¿Por qué mueves esta especie?", key="move_note"
             )
 
             col1, col2 = st.columns(2)
             if col1.button("✓ Mover", type="primary", key="move_confirm"):
                 to_code, to_name = available_groups[choice]
-                move_species(
-                    species_name,
-                    current_code,
-                    to_code,
-                    to_name,
-                    expert,
-                    note,
-                    db,
-                )
+                move_species(species_name, current_code, to_code, to_name, expert, note, db)
                 st.session_state["dialog_action"] = None
                 st.rerun()
 
@@ -229,7 +255,6 @@ if st.session_state.get("dialog_action") == "move":
                 st.session_state["dialog_action"] = None
                 st.rerun()
 
-# Dialog: Remove species
 if st.session_state.get("dialog_action") == "remove":
     species_name = st.session_state.get("dialog_species_name", "")
     current_code = st.session_state.get("dialog_current_code", "")
@@ -250,19 +275,8 @@ if st.session_state.get("dialog_action") == "remove":
         )
 
         col1, col2 = st.columns(2)
-        if col1.button(
-            "✓ Eliminar",
-            type="primary",
-            disabled=not reason.strip(),
-            key="remove_confirm",
-        ):
-            remove_species(
-                species_name,
-                current_code,
-                expert,
-                reason.strip(),
-                db,
-            )
+        if col1.button("✓ Eliminar", type="primary", disabled=not reason.strip(), key="remove_confirm"):
+            remove_species(species_name, current_code, expert, reason.strip(), db)
             st.session_state["dialog_action"] = None
             st.rerun()
 
@@ -270,25 +284,9 @@ if st.session_state.get("dialog_action") == "remove":
             st.session_state["dialog_action"] = None
             st.rerun()
 
-# ── Summary of changes ─────────────────────────────────────────────────────────
-st.markdown("---")
-st.markdown("#### 📊 Resumen de acciones")
-
-changes_count = len(
-    species_df_taxon[
-        (species_df_taxon["status"] != "validated")
-        | (species_df_taxon.get("action") == "moved")
-    ]
-)
-
-st.info(
-    f"Se han registrado automáticamente los cambios en el audit log. "
-    f"Las especies pendientes de validar: **{pending_count}**"
-)
-
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.caption(
     "💡 Consejo: Los cambios se registran directamente en la base de datos. "
-    "Puedes ver el historial completo en **Resultados Finales**."
+    "Puedes ver el historial completo en **Resultados**."
 )

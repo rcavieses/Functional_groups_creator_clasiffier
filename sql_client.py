@@ -533,6 +533,12 @@ def validate_species(taxon: str, expert: str, db):
     _log(taxon, "validate", {"expert": expert}, db)
 
 
+def validate_species_bulk(taxa: list[str], expert: str, db):
+    """Validate multiple species at once (e.g. every pending species in a genus/family)."""
+    for taxon in taxa:
+        validate_species(taxon, expert, db)
+
+
 def remove_species(taxon: str, current_code: str, expert: str, note: str, db):
     now = _now()
     updates = {"status": "removed", "last_modified_by": expert, "last_modified_at": now}

@@ -501,8 +501,8 @@ def _update_species(taxon: str, updates: dict, db):
     if df is not None and not df.empty:
         mask = df["taxon"] == taxon
         for col, val in updates.items():
-            if col not in df.columns:
-                df[col] = None
+            if col not in df.columns or df[col].dtype != object:
+                df[col] = df[col].astype(object) if col in df.columns else None
             df.loc[mask, col] = val
         st.session_state[_SESSION_KEY] = df.reset_index(drop=True)
 

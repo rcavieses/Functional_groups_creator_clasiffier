@@ -25,6 +25,7 @@ from sql_client import (
     propose_new_group,
     expert_name_from_auth,
 )
+from ui_helpers import run_db_action
 
 DATA_DIR   = Path(__file__).parent.parent / "data"
 GROUPS_CSV = DATA_DIR / "functional_groups_final.csv"
@@ -68,8 +69,11 @@ def dlg_move(taxon: str, from_code: str):
     col1, col2 = st.columns(2)
     if col1.button("Mover", type="primary", use_container_width=True):
         to_code, to_name = options[choice]
-        move_species(taxon, from_code, to_code, to_name, expert, note, db)
-        st.rerun()
+        if run_db_action(
+            lambda: move_species(taxon, from_code, to_code, to_name, expert, note, db),
+            success=f"{taxon} movida a {to_code}.",
+        ):
+            st.rerun()
     if col2.button("Cancelar", use_container_width=True):
         st.rerun()
 
@@ -94,12 +98,15 @@ def dlg_propose(taxon: str, from_code: str):
     valid = bool(group_name_new.strip() and group_code_new.strip() and description.strip())
     col_ok, col_cancel = st.columns(2)
     if col_ok.button("Proponer y reasignar", type="primary", disabled=not valid, use_container_width=True):
-        propose_new_group(
-            taxon, from_code,
-            group_name_new.strip(), group_code_new.strip(), description.strip(),
-            expert, db,
-        )
-        st.rerun()
+        if run_db_action(
+            lambda: propose_new_group(
+                taxon, from_code,
+                group_name_new.strip(), group_code_new.strip(), description.strip(),
+                expert, db,
+            ),
+            success=f"Grupo propuesto y {taxon} reasignada.",
+        ):
+            st.rerun()
     if col_cancel.button("Cancelar", use_container_width=True):
         st.rerun()
 
@@ -114,8 +121,11 @@ def dlg_remove(taxon: str, current_code: str):
     note = st.text_input("Razón (opcional):", placeholder="Ej. Ave terrestre, no marina")
     col1, col2 = st.columns(2)
     if col1.button("🗑 Confirmar", type="primary", use_container_width=True):
-        remove_species(taxon, current_code, expert, note, db)
-        st.rerun()
+        if run_db_action(
+            lambda: remove_species(taxon, current_code, expert, note, db),
+            success=f"{taxon} eliminada del modelo.",
+        ):
+            st.rerun()
     if col2.button("Cancelar", use_container_width=True):
         st.rerun()
 
@@ -345,8 +355,11 @@ for _, row in display_df.iterrows():
 
     with cols[4]:
         if st.button("✅", key=f"ok_{taxon}", help="Confirmar: clasificación correcta"):
-            validate_species(taxon, expert, db)
-            st.rerun()
+            if run_db_action(
+                lambda taxon=taxon: validate_species(taxon, expert, db),
+                success=f"{taxon} validada.",
+            ):
+                st.rerun()
 
     with cols[5]:
         if st.button("↔", key=f"mv_{taxon}", help="Mover a otro grupo"):
@@ -378,5 +391,10 @@ if not removed_all.empty and "original_code" in removed_all.columns:
                 rc1.markdown(f"~~{rt}~~")
                 rc2.markdown(by)
                 if rc3.button("↩ Restaurar", key=f"rst_{rt}"):
-                    restore_species(rt, rrow["original_code"], rrow["original_group"], expert, db)
-                    st.rerun()
+                    if run_db_action(
+                        lambda rt=rt, rrow=rrow: restore_species(
+                            rt, rrow["original_code"], rrow["original_group"], expert, db
+                        ),
+                        success=f"{rt} restaurada.",
+                    ):
+                        st.rerun()

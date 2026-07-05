@@ -24,6 +24,7 @@ from sql_client import (
     get_group_descriptions,
     set_group_description,
 )
+from ui_helpers import run_db_action
 
 st.set_page_config(page_title="Admin — Expertos", page_icon="🔧", layout="wide")
 
@@ -114,9 +115,12 @@ with tab_list:
             st.caption("Esta acción no se puede deshacer.")
             c1, c2 = st.columns(2)
             if c1.button("🗑️ Eliminar", type="primary", use_container_width=True):
-                delete_expert(uid)
-                del st.session_state["_experts_list"]
-                st.rerun()
+                if run_db_action(
+                    lambda: delete_expert(uid),
+                    success=f"Cuenta de {email} eliminada.",
+                ):
+                    del st.session_state["_experts_list"]
+                    st.rerun()
             if c2.button("Cancelar", use_container_width=True):
                 st.rerun()
 
@@ -221,6 +225,11 @@ with tab_create:
                     )
                 except ValueError as e:
                     st.error(str(e))
+                except Exception as e:  # noqa: BLE001 — error de conexión/BD
+                    st.error(
+                        "⚠️ No se pudo crear la cuenta por un problema temporal de conexión. "
+                        f"Inténtalo de nuevo en unos segundos.\n\nDetalle técnico: `{e}`"
+                    )
 
 
 # ── Tab 3: Distribución de Grupos ─────────────────────────────────────────────
@@ -370,5 +379,7 @@ with tab_desc:
                     placeholder="Composición de especies, características ecológicas, rol funcional…",
                 )
                 if st.button("💾 Guardar", key=f"save_desc_{group_code}"):
-                    set_group_description(group_code, new_desc, admin_name, db)
-                    st.success("✅ Descripción guardada.")
+                    run_db_action(
+                        lambda: set_group_description(group_code, new_desc, admin_name, db),
+                        success="✅ Descripción guardada.",
+                    )

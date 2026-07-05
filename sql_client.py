@@ -186,6 +186,31 @@ def _ensure_tables(engine):
             assigned_by NVARCHAR(255),
             UNIQUE (group_code, expert_email)
         )""",
+        """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='ai_suggestions' AND xtype='U')
+        CREATE TABLE ai_suggestions (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            suggestion_type NVARCHAR(50),
+            taxon NVARCHAR(500),
+            from_code NVARCHAR(50),
+            from_name NVARCHAR(255),
+            to_code NVARCHAR(50),
+            to_name NVARCHAR(255),
+            title NVARCHAR(500),
+            rationale NVARCHAR(MAX),
+            proposed_by NVARCHAR(255) DEFAULT 'AI_expert',
+            proposed_at DATETIME DEFAULT GETDATE(),
+            status NVARCHAR(50) DEFAULT 'pending',
+            reviewed_by NVARCHAR(255),
+            reviewed_at DATETIME
+        )""",
+        """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='ai_suggestion_comments' AND xtype='U')
+        CREATE TABLE ai_suggestion_comments (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            suggestion_id INT,
+            expert NVARCHAR(255),
+            comment NVARCHAR(MAX),
+            created_at DATETIME DEFAULT GETDATE()
+        )""",
     ]
 
     # Column migrations for tables created by an earlier schema version. The CREATE TABLE
@@ -687,6 +712,124 @@ def propose_new_group_detailed(
         )
     if _PROPOSED_KEY in st.session_state:
         del st.session_state[_PROPOSED_KEY]
+
+
+# ── AI suggestions (AI_expert review inbox) ────────────────────────────────────
+
+_AI_SUGGESTIONS_KEY = "_ai_suggestions"
+
+
+def create_ai_suggestion(
+    suggestion_type: str, title: str, rationale: str, db,
+    taxon: str | None = None, from_code: str | None = None, from_name: str | None = None,
+    to_code: str | None = None, to_name: str | None = None, proposed_by: str = "AI_expert",
+):
+    """Insert a new AI-authored suggestion for expert review.
+
+    suggestion_type: 'move_species' | 'new_group' | 'modify_group' | 'remove_species'
+    """
+    from sqlalchemy import text
+
+    with db.begin() as conn:
+        conn.execute(
+            text("""INSERT INTO ai_suggestions
+                    (suggestion_type, taxon, from_code, from_name, to_code, to_name,
+                     title, rationale, proposed_by, status)
+                    VALUES (:suggestion_type, :taxon, :from_code, :from_name, :to_code, :to_name,
+                            :title, :rationale, :proposed_by, 'pending')"""),
+            {
+                "suggestion_type": suggestion_type, "taxon": taxon,
+                "from_code": from_code, "from_name": from_name,
+                "to_code": to_code, "to_name": to_name,
+                "title": title, "rationale": rationale, "proposed_by": proposed_by,
+            },
+        )
+    if _AI_SUGGESTIONS_KEY in st.session_state:
+        del st.session_state[_AI_SUGGESTIONS_KEY]
+
+
+def get_ai_suggestions(db, force: bool = False) -> pd.DataFrame:
+    if not force and _AI_SUGGESTIONS_KEY in st.session_state:
+        return st.session_state[_AI_SUGGESTIONS_KEY]
+    df = pd.read_sql("SELECT * FROM ai_suggestions ORDER BY proposed_at DESC", db)
+    st.session_state[_AI_SUGGESTIONS_KEY] = df
+    return df
+
+
+def get_ai_suggestions_stats(db) -> dict:
+    df = get_ai_suggestions(db)
+    if df.empty:
+        return {"total": 0, "pending": 0, "approved": 0, "rejected": 0}
+    counts = df["status"].value_counts()
+    return {
+        "total": len(df),
+        "pending": int(counts.get("pending", 0)),
+        "approved": int(counts.get("approved", 0)),
+        "rejected": int(counts.get("rejected", 0)),
+    }
+
+
+def get_ai_suggestion_comments(suggestion_id: int, db) -> pd.DataFrame:
+    from sqlalchemy import text
+
+    return pd.read_sql(
+        text("SELECT * FROM ai_suggestion_comments WHERE suggestion_id = :sid ORDER BY created_at ASC"),
+        db, params={"sid": suggestion_id},
+    )
+
+
+def add_ai_suggestion_comment(suggestion_id: int, expert: str, comment: str, db):
+    from sqlalchemy import text
+
+    with db.begin() as conn:
+        conn.execute(
+            text("""INSERT INTO ai_suggestion_comments (suggestion_id, expert, comment)
+                     VALUES (:sid, :expert, :comment)"""),
+            {"sid": suggestion_id, "expert": expert, "comment": comment},
+        )
+
+
+def approve_ai_suggestion(suggestion_id: int, row: pd.Series, expert: str, db):
+    """Apply the suggested change and mark the suggestion as approved."""
+    from sqlalchemy import text
+
+    suggestion_type = row["suggestion_type"]
+    note = f"Aprobado desde sugerencia IA #{suggestion_id}"
+
+    if suggestion_type == "move_species":
+        move_species(row["taxon"], row["from_code"], row["to_code"], row["to_name"], expert, note, db)
+    elif suggestion_type == "remove_species":
+        remove_species(row["taxon"], row["from_code"], expert, note, db)
+    elif suggestion_type == "new_group":
+        propose_new_group(
+            row["taxon"], row["from_code"], row["to_name"], row["to_code"], row["rationale"], expert, db,
+        )
+    elif suggestion_type == "modify_group":
+        propose_group_modification(row["from_code"], row["from_name"], row["rationale"], expert, db)
+
+    with db.begin() as conn:
+        conn.execute(
+            text("""UPDATE ai_suggestions
+                     SET status = 'approved', reviewed_by = :expert, reviewed_at = GETDATE()
+                     WHERE id = :sid"""),
+            {"expert": expert, "sid": suggestion_id},
+        )
+    if _AI_SUGGESTIONS_KEY in st.session_state:
+        del st.session_state[_AI_SUGGESTIONS_KEY]
+
+
+def reject_ai_suggestion(suggestion_id: int, expert: str, db):
+    from sqlalchemy import text
+
+    with db.begin() as conn:
+        conn.execute(
+            text("""UPDATE ai_suggestions
+                     SET status = 'rejected', reviewed_by = :expert, reviewed_at = GETDATE()
+                     WHERE id = :sid"""),
+            {"expert": expert, "sid": suggestion_id},
+        )
+    if _AI_SUGGESTIONS_KEY in st.session_state:
+        del st.session_state[_AI_SUGGESTIONS_KEY]
 
 
 # ── User management ────────────────────────────────────────────────────────────

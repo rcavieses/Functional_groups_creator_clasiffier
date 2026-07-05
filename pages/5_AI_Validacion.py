@@ -105,14 +105,14 @@ st.divider()
 view_cards, view_table = st.tabs(["🗂️ Tarjetas", "📊 Tabla"])
 
 
-def _render_review_controls(row):
+def _render_review_controls(row, ctx: str = "card"):
     sid = int(row["id"])
     if row["status"] == "pending":
         c1, c2 = st.columns(2)
-        if c1.button("✅ Aprobar", key=f"appr_{sid}", type="primary", use_container_width=True):
+        if c1.button("✅ Aprobar", key=f"appr_{ctx}_{sid}", type="primary", use_container_width=True):
             approve_ai_suggestion(sid, row, expert, db)
             st.rerun()
-        if c2.button("❌ Rechazar", key=f"rej_{sid}", use_container_width=True):
+        if c2.button("❌ Rechazar", key=f"rej_{ctx}_{sid}", use_container_width=True):
             reject_ai_suggestion(sid, expert, db)
             st.rerun()
     else:
@@ -128,8 +128,8 @@ def _render_review_controls(row):
                 ts = pd.to_datetime(c["created_at"]).strftime("%Y-%m-%d %H:%M")
                 st.markdown(f"**{c['expert']}** · _{ts}_")
                 st.markdown(f"> {c['comment']}")
-        new_comment = st.text_area("Agregar comentario:", key=f"comment_{sid}", height=70)
-        if st.button("Enviar comentario", key=f"send_{sid}"):
+        new_comment = st.text_area("Agregar comentario:", key=f"comment_{ctx}_{sid}", height=70)
+        if st.button("Enviar comentario", key=f"send_{ctx}_{sid}"):
             if new_comment.strip():
                 add_ai_suggestion_comment(sid, expert, new_comment.strip(), db)
                 st.rerun()
@@ -188,4 +188,4 @@ with view_table:
         sel_id = st.number_input("ID:", min_value=int(filtered["id"].min()), max_value=int(filtered["id"].max()), step=1)
         match = filtered[filtered["id"] == sel_id]
         if not match.empty:
-            _render_review_controls(match.iloc[0])
+            _render_review_controls(match.iloc[0], ctx="table")

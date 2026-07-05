@@ -17,7 +17,7 @@ from sql_client import (
     get_db,
     get_ai_suggestions,
     get_ai_suggestions_stats,
-    get_ai_suggestion_comments,
+    get_all_ai_comments,
     add_ai_suggestion_comment,
     approve_ai_suggestion,
     reject_ai_suggestion,
@@ -102,6 +102,11 @@ if search.strip():
 st.caption(f"**{len(filtered)}** de {len(df)} sugerencias")
 st.divider()
 
+# Preload every comment in a single query and group by suggestion, so rendering many
+# cards doesn't fire one DB round-trip per card (which stalled the page with ~2k rows).
+all_comments = get_all_ai_comments(db)
+comments_by_sid = dict(tuple(all_comments.groupby("suggestion_id"))) if not all_comments.empty else {}
+
 view_cards, view_table = st.tabs(["🗂️ Tarjetas", "📊 Tabla"])
 
 
@@ -119,9 +124,10 @@ def _render_review_controls(row, ctx: str = "card"):
         reviewer = row.get("reviewed_by") or "—"
         st.caption(f"Revisado por **{reviewer}**")
 
-    with st.expander("💬 Comentarios"):
-        comments = get_ai_suggestion_comments(sid, db)
-        if comments.empty:
+    comments = comments_by_sid.get(sid)
+    n_comments = 0 if comments is None else len(comments)
+    with st.expander(f"💬 Comentarios ({n_comments})"):
+        if comments is None or comments.empty:
             st.caption("Sin comentarios todavía.")
         else:
             for _, c in comments.iterrows():
@@ -141,8 +147,24 @@ with view_cards:
     if filtered.empty:
         st.info("No hay sugerencias con estos filtros.")
     else:
+        PAGE_SIZE = 20
+        total = len(filtered)
+        n_pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
+
+        pc1, pc2 = st.columns([1, 3])
+        with pc1:
+            page = st.number_input(
+                f"Página (1–{n_pages})", min_value=1, max_value=n_pages, value=1, step=1,
+                key="cards_page",
+            )
+        start = (int(page) - 1) * PAGE_SIZE
+        end = min(start + PAGE_SIZE, total)
+        with pc2:
+            st.caption(f"Mostrando **{start + 1}–{end}** de {total} sugerencias")
+
+        page_df = filtered.iloc[start:end]
         cols = st.columns(2)
-        for idx, (_, row) in enumerate(filtered.iterrows()):
+        for idx, (_, row) in enumerate(page_df.iterrows()):
             col = cols[idx % 2]
             with col:
                 with st.container(border=True):

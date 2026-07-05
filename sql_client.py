@@ -778,6 +778,13 @@ def get_ai_suggestion_comments(suggestion_id: int, db) -> pd.DataFrame:
     )
 
 
+def get_all_ai_comments(db) -> pd.DataFrame:
+    """All comments in one query — avoids a per-card DB round-trip when rendering many suggestions."""
+    return pd.read_sql(
+        "SELECT * FROM ai_suggestion_comments ORDER BY created_at ASC", db
+    )
+
+
 def add_ai_suggestion_comment(suggestion_id: int, expert: str, comment: str, db):
     from sqlalchemy import text
 

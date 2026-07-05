@@ -31,7 +31,7 @@ GROUPS_CSV     = DATA_DIR  / "functional_groups_final.csv"
 LOGO_PATH      = Path(__file__).parent / "CEDO_2023_logo.png"
 
 st.set_page_config(
-    page_title="Validación — Grupos Funcionales",
+    page_title="Introducción — Grupos Funcionales",
     page_icon="🐟",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -50,8 +50,15 @@ st.session_state.setdefault("expert_name", "")
 st.session_state.setdefault("db_imported", False)
 
 # ── Header ─────────────────────────────────────────────────────────────────────
-st.title("🐟 Validación de Grupos Funcionales")
+st.title("🐟 Introducción — Validación de Grupos Funcionales")
 st.caption("Golfo de California · Modelo ATLANTIS · Validación por expertos")
+
+st.markdown(
+    "Este proyecto clasifica cerca de **10,800 especies marinas del Golfo de California** "
+    "en **grupos funcionales** para el modelo ecosistémico **ATLANTIS**. Un modelo de lenguaje (LLM) "
+    "propone una clasificación inicial para cada especie, y el rol de los expertos aquí reunidos es "
+    "**revisar, corregir y validar** esas propuestas antes de que se usen en el modelo."
+)
 
 # ── Login ──────────────────────────────────────────────────────────────────────
 if not st.session_state.auth:
@@ -143,12 +150,18 @@ st.progress(pct, text=f"Progreso de validación: {pct:.1%}")
 st.markdown("---")
 st.markdown(
     "### ¿Por dónde empezar?\n\n"
-    "Usa el menú lateral izquierdo para navegar entre las páginas:\n\n"
+    "Usa el menú lateral izquierdo para navegar entre las páginas. El flujo recomendado para "
+    "un experto es: revisar los grupos que te fueron asignados, validar taxonomía o especies "
+    "individuales, y consultar resultados cuando termines.\n\n"
     "| Página | Descripción |\n"
     "|---|---|\n"
-    "| **✅ Validar Grupos** | Revisa las especies de cada grupo. Confirma, mueve o quita taxa. |\n"
-    "| **📈 Dashboard** | Estadísticas generales, comentarios de otros expertos, propuestas pendientes. |\n"
-    "| **📊 Resultados Finales** | Vista consolidada, grupos propuestos y descarga de resultados. |"
+    "| **📊 Validar Grupos** | Punto de partida: revisa cada grupo funcional, califica qué tan bien agrupadas están sus especies y comenta si algo no encaja. |\n"
+    "| **🧬 Validar Taxonomía** | Revisa el grupo por género o familia y valida varias especies a la vez cuando toda la familia/género pertenece claramente al grupo. |\n"
+    "| **✅ Validar Especies** | Vista especie por especie dentro de un grupo, con filtros por taxonomía (reino, filo, clase, orden, familia). Confirma, mueve o quita taxa uno a uno. |\n"
+    "| **🤖 AI Validación** | Revisa sugerencias de reclasificación generadas por IA y decide si aceptarlas o rechazarlas. |\n"
+    "| **📈 Dashboard** | Estadísticas generales de avance, comentarios de otros expertos y propuestas pendientes. |\n"
+    "| **📊 Resultados** | Vista consolidada del estado final, grupos propuestos y descarga de resultados (CSV/JSON). |\n\n"
+    "*(Solo administradores verán además la página de* **🔧 Admin***, para gestionar expertos y asignar grupos.)*"
 )
 
 st.markdown(

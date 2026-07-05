@@ -24,6 +24,7 @@ from sql_client import (
     MIN_CONSENSUS,
     expert_name_from_auth,
 )
+from ui_helpers import run_db_action
 
 st.set_page_config(page_title="AI Validación", page_icon="🤖", layout="wide")
 
@@ -185,18 +186,28 @@ with tab_batches:
             bc1, bc2 = st.columns(2)
             if bc1.button(f"✅ Aprobar lote ({len(votable_ids)})", key=f"appr_{cat}",
                           type="primary", use_container_width=True, disabled=not votable_ids):
-                res = cast_ai_votes(votable_ids, expert, "approve", db)
-                get_ai_suggestions(db, force=True)
-                st.success(f"Registrado tu voto en {res['voted']} sugerencias · "
-                           f"{res['applied']} alcanzaron consenso y se aplicaron.")
-                st.rerun()
+                holder = {}
+                if run_db_action(
+                    lambda: holder.update(res=cast_ai_votes(votable_ids, expert, "approve", db)),
+                    spinner="Registrando tu voto…",
+                ):
+                    res = holder["res"]
+                    get_ai_suggestions(db, force=True)
+                    st.success(f"Registrado tu voto en {res['voted']} sugerencias · "
+                               f"{res['applied']} alcanzaron consenso y se aplicaron.")
+                    st.rerun()
             if bc2.button(f"❌ Rechazar lote ({len(votable_ids)})", key=f"rej_{cat}",
                           use_container_width=True, disabled=not votable_ids):
-                res = cast_ai_votes(votable_ids, expert, "reject", db)
-                get_ai_suggestions(db, force=True)
-                st.warning(f"Registrado tu rechazo en {res['voted']} sugerencias · "
-                           f"{res['rejected']} alcanzaron consenso de rechazo.")
-                st.rerun()
+                holder = {}
+                if run_db_action(
+                    lambda: holder.update(res=cast_ai_votes(votable_ids, expert, "reject", db)),
+                    spinner="Registrando tu rechazo…",
+                ):
+                    res = holder["res"]
+                    get_ai_suggestions(db, force=True)
+                    st.warning(f"Registrado tu rechazo en {res['voted']} sugerencias · "
+                               f"{res['rejected']} alcanzaron consenso de rechazo.")
+                    st.rerun()
 
             # Batch comments
             with st.expander("💬 Comentarios del lote"):
@@ -211,8 +222,11 @@ with tab_batches:
                 new_c = st.text_area("Agregar comentario al lote:", key=f"cmt_{cat}", height=70)
                 if st.button("Enviar comentario", key=f"sendc_{cat}"):
                     if new_c.strip():
-                        add_batch_comment(cat, expert, new_c.strip(), db)
-                        st.rerun()
+                        if run_db_action(
+                            lambda: add_batch_comment(cat, expert, new_c.strip(), db),
+                            success="Comentario agregado.",
+                        ):
+                            st.rerun()
                     else:
                         st.warning("Escribe un comentario primero.")
 

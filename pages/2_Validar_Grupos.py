@@ -31,6 +31,7 @@ from sql_client import (
     get_assignment_stats,
     propose_group_modification,
 )
+from ui_helpers import run_db_action
 
 st.set_page_config(
     page_title="Validar Grupos",
@@ -179,20 +180,14 @@ with tab1:
                                 height=60,
                             )
                             if st.button("💾 Guardar calificación", key=f"save_rate_{group_code}", use_container_width=True):
-                                try:
-                                    rate_group(
-                                        group_code,
-                                        group_info["name"],
-                                        rating,
-                                        comment,
-                                        expert_name,
-                                        db
-                                    )
-                                    st.success("✅ Calificación guardada")
+                                if run_db_action(
+                                    lambda: rate_group(
+                                        group_code, group_info["name"], rating, comment, expert_name, db
+                                    ),
+                                    success="✅ Calificación guardada",
+                                ):
                                     st.session_state[f"show_comment_{group_code}"] = False
                                     st.rerun()
-                                except Exception as e:
-                                    st.error(f"Error: {e}")
 
                         st.divider()
 
@@ -207,19 +202,14 @@ with tab1:
                             )
                             if st.button("✓ Enviar propuesta", key=f"send_delete_{group_code}", use_container_width=True):
                                 if reason.strip():
-                                    try:
-                                        propose_group_deletion(
-                                            group_code,
-                                            group_info["name"],
-                                            reason,
-                                            expert_name,
-                                            db
-                                        )
-                                        st.success("✅ Propuesta enviada")
+                                    if run_db_action(
+                                        lambda: propose_group_deletion(
+                                            group_code, group_info["name"], reason, expert_name, db
+                                        ),
+                                        success="✅ Propuesta enviada",
+                                    ):
                                         st.session_state[f"show_delete_{group_code}"] = False
                                         st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Error: {e}")
                                 else:
                                     st.warning("Ingresa un argumento")
 
@@ -236,19 +226,14 @@ with tab1:
                             )
                             if st.button("✓ Enviar sugerencia", key=f"send_modify_{group_code}", use_container_width=True):
                                 if suggestion.strip():
-                                    try:
-                                        propose_group_modification(
-                                            group_code,
-                                            group_info["name"],
-                                            suggestion,
-                                            expert_name,
-                                            db,
-                                        )
-                                        st.success("✅ Sugerencia enviada")
+                                    if run_db_action(
+                                        lambda: propose_group_modification(
+                                            group_code, group_info["name"], suggestion, expert_name, db
+                                        ),
+                                        success="✅ Sugerencia enviada",
+                                    ):
                                         st.session_state[f"show_modify_{group_code}"] = False
                                         st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Error: {e}")
                                 else:
                                     st.warning("Ingresa una sugerencia")
 
@@ -287,19 +272,13 @@ with tab2:
         if not all([new_code, new_name, new_description, new_justification]):
             st.error("Completa todos los campos")
         else:
-            try:
-                propose_new_group_detailed(
-                    new_code,
-                    new_name,
-                    new_description,
-                    new_justification,
-                    expert_name,
-                    db
-                )
-                st.success("✅ Propuesta de nuevo grupo enviada")
+            if run_db_action(
+                lambda: propose_new_group_detailed(
+                    new_code, new_name, new_description, new_justification, expert_name, db
+                ),
+                success="✅ Propuesta de nuevo grupo enviada",
+            ):
                 st.rerun()
-            except Exception as e:
-                st.error(f"Error: {e}")
 
     st.divider()
 

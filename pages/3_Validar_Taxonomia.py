@@ -24,6 +24,7 @@ from sql_client import (
     validate_species_bulk,
     expert_name_from_auth,
 )
+from ui_helpers import run_db_action
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 GROUPS_CSV = DATA_DIR / "functional_groups_final.csv"
@@ -140,9 +141,11 @@ else:
                     disabled=not pending_taxa,
                     help=f"Marca como validadas las {len(pending_taxa)} especies pendientes de {taxon_name}",
                 ):
-                    validate_species_bulk(pending_taxa, expert, db)
-                    st.success(f"{len(pending_taxa)} especies de {taxon_name} validadas.")
-                    st.rerun()
+                    if run_db_action(
+                        lambda: validate_species_bulk(pending_taxa, expert, db),
+                        success=f"{len(pending_taxa)} especies de {taxon_name} validadas.",
+                    ):
+                        st.rerun()
 
             for _, row in sub_df.iterrows():
                 sp_name = row["taxon"]
@@ -198,8 +201,13 @@ if view_by == "Eliminados":
             rc1.markdown(f"~~{rt}~~")
             rc2.markdown(by)
             if rc3.button("↩ Restaurar", key=f"restore_{rt}"):
-                restore_species(rt, row["original_code"], row["original_group"], expert, db)
-                st.rerun()
+                if run_db_action(
+                    lambda rt=rt, row=row: restore_species(
+                        rt, row["original_code"], row["original_group"], expert, db
+                    ),
+                    success=f"{rt} restaurada.",
+                ):
+                    st.rerun()
 else:
     if view_by == "Género":
         display_df = group_df.dropna(subset=["genus"]).sort_values(["genus", "taxon"])
@@ -276,9 +284,12 @@ if st.session_state.get("dialog_action") == "move":
             col1, col2 = st.columns(2)
             if col1.button("✓ Mover", type="primary", key="move_confirm"):
                 to_code, to_name = available_groups[choice]
-                move_species(species_name, current_code, to_code, to_name, expert, note, db)
-                st.session_state["dialog_action"] = None
-                st.rerun()
+                if run_db_action(
+                    lambda: move_species(species_name, current_code, to_code, to_name, expert, note, db),
+                    success=f"{species_name} movida a {to_code}.",
+                ):
+                    st.session_state["dialog_action"] = None
+                    st.rerun()
 
             if col2.button("✗ Cancelar", key="move_cancel"):
                 st.session_state["dialog_action"] = None
@@ -310,9 +321,12 @@ if st.session_state.get("dialog_action") == "remove":
 
         col1, col2 = st.columns(2)
         if col1.button("✓ Eliminar", type="primary", disabled=not reason.strip(), key="remove_confirm"):
-            remove_species(species_name, current_code, expert, reason.strip(), db)
-            st.session_state["dialog_action"] = None
-            st.rerun()
+            if run_db_action(
+                lambda: remove_species(species_name, current_code, expert, reason.strip(), db),
+                success=f"{species_name} eliminada.",
+            ):
+                st.session_state["dialog_action"] = None
+                st.rerun()
 
         if col2.button("✗ Cancelar", key="remove_cancel"):
             st.session_state["dialog_action"] = None

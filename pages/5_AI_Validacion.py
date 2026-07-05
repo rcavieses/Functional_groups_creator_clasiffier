@@ -89,13 +89,20 @@ df["n_reject"] = df["id"].map(rej).fillna(0).astype(int)
 df["my_vote"] = df["id"].map(my_votes)
 
 # ── Filters ─────────────────────────────────────────────────────────────────────
-f1, f2 = st.columns([1.4, 1.4])
+f0, f1, f2 = st.columns([1.4, 1.4, 1.4])
+with f0:
+    groups = sorted(df["from_code"].dropna().unique())
+    group_filter = st.selectbox("Grupo de origen:", ["Todos"] + list(groups))
 with f1:
     status_filter = st.selectbox(
         "Mostrar lotes con estado:", ["Todos", "Pendientes", "Esperando 2º voto", "Aplicadas", "Rechazadas"]
     )
 with f2:
     only_unvoted = st.checkbox("Solo sugerencias que aún no he votado", value=False)
+
+# Scope the whole view to one origin group when selected
+if group_filter != "Todos":
+    df = df[df["from_code"] == group_filter]
 
 tab_batches, tab_table = st.tabs(["📦 Revisión por lotes", "📊 Tabla detallada"])
 

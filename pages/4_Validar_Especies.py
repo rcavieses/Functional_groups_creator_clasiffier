@@ -285,15 +285,26 @@ display_df = display_df.sort_values(
 
 st.divider()
 
+active_filters = ", ".join(
+    f"{tax_levels[col_name]}: {', '.join(values)}" for col_name, values in tax_filters.items()
+)
+filter_summary = f"📌 Grupo: **{selected_code} — {group_name}**"
+if active_filters:
+    filter_summary += f" &nbsp;→&nbsp; 🔎 {active_filters}"
+filter_summary += f" &nbsp;|&nbsp; **{len(display_df)}** taxa mostrados"
+st.markdown(filter_summary)
+st.divider()
+
 # Column headers
-hcols = st.columns([4, 2, 2, 1, 1, 1, 1])
+hcols = st.columns([3.5, 1.5, 2, 2, 1, 1, 1, 1])
 hcols[0].markdown("**Taxon | Taxonomía**")
-hcols[1].markdown("**Estado**")
-hcols[2].markdown("**Confianza LLM**")
-hcols[3].markdown("**✅**")
-hcols[4].markdown("**↔**")
-hcols[5].markdown("**💡**")
-hcols[6].markdown("**🗑**")
+hcols[1].markdown("**Grupo**")
+hcols[2].markdown("**Estado**")
+hcols[3].markdown("**Confianza LLM**")
+hcols[4].markdown("**✅**")
+hcols[5].markdown("**↔**")
+hcols[6].markdown("**💡**")
+hcols[7].markdown("**🗑**")
 st.divider()
 
 CONF_ICON = {"high": "🟢 alta", "medium": "🟡 media", "low": "🔴 baja"}
@@ -304,7 +315,7 @@ for _, row in display_df.iterrows():
     confidence = row.get("confidence", "?")
     modified_by = row.get("last_modified_by") or ""
 
-    cols = st.columns([4, 2, 2, 1, 1, 1, 1])
+    cols = st.columns([3.5, 1.5, 2, 2, 1, 1, 1, 1])
 
     with cols[0]:
         st.markdown(f"*{taxon}*")
@@ -320,28 +331,32 @@ for _, row in display_df.iterrows():
             st.caption(f"↳ Modificado por: {modified_by}")
 
     with cols[1]:
+        st.caption(f"`{selected_code}`")
+        st.caption(group_name)
+
+    with cols[2]:
         if status == "validated":
             st.markdown("✅ Validado")
         else:
             st.markdown("⏳ Pendiente")
 
-    with cols[2]:
+    with cols[3]:
         st.markdown(CONF_ICON.get(confidence, f"⚪ {confidence}"))
 
-    with cols[3]:
+    with cols[4]:
         if st.button("✅", key=f"ok_{taxon}", help="Confirmar: clasificación correcta"):
             validate_species(taxon, expert, db)
             st.rerun()
 
-    with cols[4]:
+    with cols[5]:
         if st.button("↔", key=f"mv_{taxon}", help="Mover a otro grupo"):
             dlg_move(taxon, selected_code)
 
-    with cols[5]:
+    with cols[6]:
         if st.button("💡", key=f"np_{taxon}", help="Proponer nuevo grupo funcional"):
             dlg_propose(taxon, selected_code)
 
-    with cols[6]:
+    with cols[7]:
         if st.button("🗑", key=f"rm_{taxon}", help="Quitar del modelo (no marino / irrelevante)"):
             dlg_remove(taxon, selected_code)
 

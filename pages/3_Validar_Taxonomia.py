@@ -106,9 +106,24 @@ taxa_list = sorted(breakdown.groups.keys())
 if not taxa_list:
     st.info(f"No hay {taxon_type.lower()}s registrados para las especies de este grupo.")
 else:
-    st.markdown(f"### 📌 {group_name} — {len(taxa_list)} {taxon_type.lower()}(s)")
+    search_term = st.text_input(
+        f"🔎 Buscar {taxon_type.lower()}:",
+        key=f"search_{tax_col}_{selected_code}",
+        placeholder=f"Filtrar {taxon_type.lower()}s por nombre…",
+    ).strip().lower()
 
-    for taxon_name in taxa_list:
+    filtered_taxa = (
+        [t for t in taxa_list if search_term in t.lower()] if search_term else taxa_list
+    )
+
+    st.markdown(
+        f"### 📌 {group_name} — {len(filtered_taxa)} de {len(taxa_list)} {taxon_type.lower()}(s)"
+    )
+
+    if not filtered_taxa:
+        st.info(f"Ningún {taxon_type.lower()} coincide con «{search_term}».")
+
+    for taxon_name in filtered_taxa:
         sub_df = breakdown.get_group(taxon_name).sort_values("taxon")
         pending = sub_df[sub_df["status"] == "pending"]
         pending_taxa = pending["taxon"].tolist()
@@ -190,6 +205,25 @@ else:
         display_df = group_df.dropna(subset=["genus"]).sort_values(["genus", "taxon"])
     else:
         display_df = group_df.sort_values("taxon")
+
+    adj_search = st.text_input(
+        "🔎 Buscar por género o especie:" if view_by == "Género" else "🔎 Buscar especie:",
+        key=f"adj_search_{view_by}_{selected_code}",
+        placeholder="Filtrar por nombre…",
+    ).strip().lower()
+
+    if adj_search:
+        if view_by == "Género":
+            mask = display_df["genus"].str.lower().str.contains(adj_search, na=False) | display_df[
+                "taxon"
+            ].str.lower().str.contains(adj_search, na=False)
+        else:
+            mask = display_df["taxon"].str.lower().str.contains(adj_search, na=False)
+        display_df = display_df[mask]
+
+    st.caption(f"{len(display_df)} especie(s) mostradas.")
+    if display_df.empty:
+        st.info(f"Ninguna especie coincide con «{adj_search}».")
 
     for _, row in display_df.iterrows():
         sp_name = row["taxon"]

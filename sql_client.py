@@ -211,6 +211,23 @@ def _ensure_tables(engine):
             comment NVARCHAR(MAX),
             created_at DATETIME DEFAULT GETDATE()
         )""",
+        """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='ai_suggestion_votes' AND xtype='U')
+        CREATE TABLE ai_suggestion_votes (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            suggestion_id INT,
+            expert NVARCHAR(255),
+            vote NVARCHAR(20),
+            created_at DATETIME DEFAULT GETDATE(),
+            UNIQUE (suggestion_id, expert)
+        )""",
+        """IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='ai_batch_comments' AND xtype='U')
+        CREATE TABLE ai_batch_comments (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            category NVARCHAR(100),
+            expert NVARCHAR(255),
+            comment NVARCHAR(MAX),
+            created_at DATETIME DEFAULT GETDATE()
+        )""",
     ]
 
     # Column migrations for tables created by an earlier schema version. The CREATE TABLE
@@ -220,6 +237,7 @@ def _ensure_tables(engine):
     migrations = [
         ("group_ratings", "expert", "NVARCHAR(255)"),
         ("audit_log", "expert", "NVARCHAR(255)"),
+        ("ai_suggestions", "category", "NVARCHAR(100)"),
         ("species", "family", "NVARCHAR(255)"),
         ("species", "genus", "NVARCHAR(255)"),
         ("species", "order_taxon", "NVARCHAR(255)"),
@@ -723,10 +741,12 @@ def create_ai_suggestion(
     suggestion_type: str, title: str, rationale: str, db,
     taxon: str | None = None, from_code: str | None = None, from_name: str | None = None,
     to_code: str | None = None, to_name: str | None = None, proposed_by: str = "AI_expert",
+    category: str | None = None,
 ):
     """Insert a new AI-authored suggestion for expert review.
 
     suggestion_type: 'move_species' | 'new_group' | 'modify_group' | 'remove_species'
+    category: batch label used to group suggestions for bulk review.
     """
     from sqlalchemy import text
 
@@ -734,14 +754,15 @@ def create_ai_suggestion(
         conn.execute(
             text("""INSERT INTO ai_suggestions
                     (suggestion_type, taxon, from_code, from_name, to_code, to_name,
-                     title, rationale, proposed_by, status)
+                     title, rationale, proposed_by, category, status)
                     VALUES (:suggestion_type, :taxon, :from_code, :from_name, :to_code, :to_name,
-                            :title, :rationale, :proposed_by, 'pending')"""),
+                            :title, :rationale, :proposed_by, :category, 'pending')"""),
             {
                 "suggestion_type": suggestion_type, "taxon": taxon,
                 "from_code": from_code, "from_name": from_name,
                 "to_code": to_code, "to_name": to_name,
                 "title": title, "rationale": rationale, "proposed_by": proposed_by,
+                "category": category,
             },
         )
     if _AI_SUGGESTIONS_KEY in st.session_state:
@@ -796,12 +817,11 @@ def add_ai_suggestion_comment(suggestion_id: int, expert: str, comment: str, db)
         )
 
 
-def approve_ai_suggestion(suggestion_id: int, row: pd.Series, expert: str, db):
-    """Apply the suggested change and mark the suggestion as approved."""
-    from sqlalchemy import text
-
+def _apply_ai_suggestion_change(row: pd.Series, expert: str, db):
+    """Execute the actual data change described by an AI suggestion."""
     suggestion_type = row["suggestion_type"]
-    note = f"Aprobado desde sugerencia IA #{suggestion_id}"
+    sid = int(row["id"])
+    note = f"Aprobado por consenso desde sugerencia IA #{sid}"
 
     if suggestion_type == "move_species":
         move_species(row["taxon"], row["from_code"], row["to_code"], row["to_name"], expert, note, db)
@@ -814,6 +834,12 @@ def approve_ai_suggestion(suggestion_id: int, row: pd.Series, expert: str, db):
     elif suggestion_type == "modify_group":
         propose_group_modification(row["from_code"], row["from_name"], row["rationale"], expert, db)
 
+
+def approve_ai_suggestion(suggestion_id: int, row: pd.Series, expert: str, db):
+    """Directly apply and mark approved (single-reviewer path, e.g. admin override)."""
+    from sqlalchemy import text
+
+    _apply_ai_suggestion_change(row, expert, db)
     with db.begin() as conn:
         conn.execute(
             text("""UPDATE ai_suggestions
@@ -837,6 +863,104 @@ def reject_ai_suggestion(suggestion_id: int, expert: str, db):
         )
     if _AI_SUGGESTIONS_KEY in st.session_state:
         del st.session_state[_AI_SUGGESTIONS_KEY]
+
+
+# ── Consensus voting ────────────────────────────────────────────────────────────
+
+MIN_CONSENSUS = 2  # distinct experts required to apply a suggestion
+
+
+def get_ai_votes(db) -> pd.DataFrame:
+    """All votes (one row per expert per suggestion)."""
+    return pd.read_sql("SELECT suggestion_id, expert, vote FROM ai_suggestion_votes", db)
+
+
+def cast_ai_votes(suggestion_ids: list[int], expert: str, vote: str, db,
+                  min_consensus: int = MIN_CONSENSUS) -> dict:
+    """Record `expert`'s vote ('approve'|'reject') for each suggestion, then apply any
+    suggestion that has reached consensus. Returns a summary dict.
+
+    A suggestion is applied (status='approved') once `min_consensus` DISTINCT experts have
+    approved it; it is marked 'rejected' once `min_consensus` distinct experts reject it.
+    """
+    from sqlalchemy import text
+
+    if not suggestion_ids:
+        return {"voted": 0, "applied": 0, "rejected": 0}
+
+    ids = [int(s) for s in suggestion_ids]
+
+    # 1. Upsert this expert's vote for each suggestion (unique on suggestion_id+expert).
+    with db.begin() as conn:
+        for sid in ids:
+            conn.execute(
+                text("DELETE FROM ai_suggestion_votes WHERE suggestion_id = :sid AND expert = :expert"),
+                {"sid": sid, "expert": expert},
+            )
+            conn.execute(
+                text("""INSERT INTO ai_suggestion_votes (suggestion_id, expert, vote)
+                         VALUES (:sid, :expert, :vote)"""),
+                {"sid": sid, "expert": expert, "vote": vote},
+            )
+
+    # 2. Re-evaluate consensus for the affected, still-pending suggestions.
+    applied = rejected = 0
+    with db.connect() as conn:
+        placeholders = ", ".join(f":id{i}" for i in range(len(ids)))
+        params = {f"id{i}": sid for i, sid in enumerate(ids)}
+        sugg = pd.read_sql(
+            text(f"SELECT * FROM ai_suggestions WHERE id IN ({placeholders}) AND status = 'pending'"),
+            conn, params=params,
+        )
+        votes = pd.read_sql(
+            text(f"SELECT suggestion_id, expert, vote FROM ai_suggestion_votes WHERE suggestion_id IN ({placeholders})"),
+            conn, params=params,
+        )
+
+    for _, row in sugg.iterrows():
+        sid = int(row["id"])
+        v = votes[votes["suggestion_id"] == sid]
+        approvals = v[v["vote"] == "approve"]["expert"].nunique()
+        rejections = v[v["vote"] == "reject"]["expert"].nunique()
+        if approvals >= min_consensus:
+            reviewers = ", ".join(sorted(v[v["vote"] == "approve"]["expert"].unique()))
+            _apply_ai_suggestion_change(row, expert, db)
+            with db.begin() as conn:
+                conn.execute(
+                    text("""UPDATE ai_suggestions
+                             SET status='approved', reviewed_by=:rev, reviewed_at=GETDATE()
+                             WHERE id=:sid"""),
+                    {"rev": f"Consenso: {reviewers}", "sid": sid},
+                )
+            applied += 1
+        elif rejections >= min_consensus:
+            reviewers = ", ".join(sorted(v[v["vote"] == "reject"]["expert"].unique()))
+            with db.begin() as conn:
+                conn.execute(
+                    text("""UPDATE ai_suggestions
+                             SET status='rejected', reviewed_by=:rev, reviewed_at=GETDATE()
+                             WHERE id=:sid"""),
+                    {"rev": f"Rechazo: {reviewers}", "sid": sid},
+                )
+            rejected += 1
+
+    if _AI_SUGGESTIONS_KEY in st.session_state:
+        del st.session_state[_AI_SUGGESTIONS_KEY]
+    return {"voted": len(ids), "applied": applied, "rejected": rejected}
+
+
+def add_batch_comment(category: str, expert: str, comment: str, db):
+    from sqlalchemy import text
+
+    with db.begin() as conn:
+        conn.execute(
+            text("INSERT INTO ai_batch_comments (category, expert, comment) VALUES (:c, :e, :m)"),
+            {"c": category, "e": expert, "m": comment},
+        )
+
+
+def get_batch_comments(db) -> pd.DataFrame:
+    return pd.read_sql("SELECT category, expert, comment, created_at FROM ai_batch_comments ORDER BY created_at ASC", db)
 
 
 # ── User management ────────────────────────────────────────────────────────────

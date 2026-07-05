@@ -1,9 +1,9 @@
 """
-AI Validación — Bandeja de revisión de sugerencias del experto IA
+AI Validación — Revisión por lotes con consenso
 
-Muestra los cambios de grupos funcionales / asignación de especies que
-propone la cuenta AI_expert. Los expertos humanos aprueban, rechazan
-y comentan cada sugerencia; todo queda registrado en la base de datos.
+Las sugerencias de la cuenta AI_expert se agrupan en lotes taxonómicos.
+Los expertos aprueban/rechazan lotes completos (pudiendo excluir excepciones).
+Un cambio se aplica solo cuando DOS expertos distintos lo aprueban (consenso).
 """
 
 from pathlib import Path
@@ -17,16 +17,16 @@ from sql_client import (
     get_db,
     get_ai_suggestions,
     get_ai_suggestions_stats,
-    get_all_ai_comments,
-    add_ai_suggestion_comment,
-    approve_ai_suggestion,
-    reject_ai_suggestion,
+    get_ai_votes,
+    cast_ai_votes,
+    add_batch_comment,
+    get_batch_comments,
+    MIN_CONSENSUS,
     expert_name_from_auth,
 )
 
 st.set_page_config(page_title="AI Validación", page_icon="🤖", layout="wide")
 
-# ── Auth guard ─────────────────────────────────────────────────────────────────
 if not st.session_state.get("auth"):
     st.warning("⚠️ Debes iniciar sesión primero. Ve a la página de **Inicio**.")
     st.stop()
@@ -34,11 +34,15 @@ if not st.session_state.get("auth"):
 expert = expert_name_from_auth(st.session_state.auth)
 db = get_db()
 
-TYPE_ICON = {
-    "move_species": "↔️",
-    "new_group": "✨",
-    "modify_group": "✏️",
-    "remove_species": "🗑️",
+CATEGORY_ICON = {
+    "Plantas terrestres": "🌱",
+    "Artrópodos terrestres": "🐛",
+    "Tetrápodos terrestres": "🦎",
+    "Hongos y líquenes": "🍄",
+    "Gasterópodos → GAS": "🐌",
+    "Cangrejos bentónicos → BEC": "🦀",
+    "Poliquetos → PWO": "🪱",
+    "Tunicados → SPO": "🧽",
 }
 TYPE_LABEL = {
     "move_species": "Mover especie",
@@ -46,168 +50,184 @@ TYPE_LABEL = {
     "modify_group": "Modificar grupo",
     "remove_species": "Quitar especie",
 }
-STATUS_BADGE = {
-    "pending": "⏳ Pendiente",
-    "approved": "✅ Aprobada",
-    "rejected": "❌ Rechazada",
-}
+STATUS_BADGE = {"pending": "⏳ Pendiente", "approved": "✅ Aplicada", "rejected": "❌ Rechazada"}
 
 st.title("🤖 AI Validación")
-st.caption("Sugerencias propuestas por la cuenta **AI_expert** — revisa, comenta y aprueba/rechaza.")
+st.caption(
+    f"Sugerencias de **AI_expert**, agrupadas en lotes. Un cambio se aplica cuando "
+    f"**{MIN_CONSENSUS} expertos distintos** lo aprueban (consenso)."
+)
 
 if st.button("🔄 Recargar", use_container_width=False):
     get_ai_suggestions(db, force=True)
     st.rerun()
 
-# ── Metrics ────────────────────────────────────────────────────────────────────
+# ── Data ────────────────────────────────────────────────────────────────────────
+df = get_ai_suggestions(db)
+votes = get_ai_votes(db)
+batch_comments = get_batch_comments(db)
 stats = get_ai_suggestions_stats(db)
+
 m1, m2, m3, m4 = st.columns(4)
-m1.metric("Total", stats["total"])
-m2.metric("⏳ Pendientes", stats["pending"])
-m3.metric("✅ Aprobadas", stats["approved"])
+m1.metric("Total sugerencias", stats["total"])
+m2.metric("✅ Aplicadas", stats["approved"])
+m3.metric("⏳ Pendientes", stats["pending"])
 m4.metric("❌ Rechazadas", stats["rejected"])
 st.divider()
 
-df = get_ai_suggestions(db)
-
 if df.empty:
-    st.info("Aún no hay sugerencias de la IA. Cuando AI_expert proponga cambios, aparecerán aquí.")
+    st.info("Aún no hay sugerencias de la IA.")
     st.stop()
 
-# ── Filters ────────────────────────────────────────────────────────────────────
-f1, f2, f3 = st.columns([1.2, 1.5, 2])
+# Per-suggestion vote tallies (distinct experts)
+appr = votes[votes["vote"] == "approve"].groupby("suggestion_id")["expert"].nunique()
+rej = votes[votes["vote"] == "reject"].groupby("suggestion_id")["expert"].nunique()
+my_votes = votes[votes["expert"] == expert].set_index("suggestion_id")["vote"].to_dict()
+df = df.copy()
+df["n_approve"] = df["id"].map(appr).fillna(0).astype(int)
+df["n_reject"] = df["id"].map(rej).fillna(0).astype(int)
+df["my_vote"] = df["id"].map(my_votes)
+
+# ── Filters ─────────────────────────────────────────────────────────────────────
+f1, f2 = st.columns([1.4, 1.4])
 with f1:
-    status_filter = st.selectbox("Estado:", ["Todos", "Pendientes", "Aprobadas", "Rechazadas"])
-with f2:
-    type_options = sorted(df["suggestion_type"].dropna().unique())
-    type_filter = st.multiselect(
-        "Tipo de cambio:", options=type_options,
-        format_func=lambda t: f"{TYPE_ICON.get(t, '')} {TYPE_LABEL.get(t, t)}",
+    status_filter = st.selectbox(
+        "Mostrar lotes con estado:", ["Todos", "Pendientes", "Esperando 2º voto", "Aplicadas", "Rechazadas"]
     )
-with f3:
-    search = st.text_input("Buscar por taxón, grupo o texto:", placeholder="Ej. Sardinops, PROD, sardina…")
+with f2:
+    only_unvoted = st.checkbox("Solo sugerencias que aún no he votado", value=False)
 
-filtered = df.copy()
-status_map = {"Pendientes": "pending", "Aprobadas": "approved", "Rechazadas": "rejected"}
-if status_filter != "Todos":
-    filtered = filtered[filtered["status"] == status_map[status_filter]]
-if type_filter:
-    filtered = filtered[filtered["suggestion_type"].isin(type_filter)]
-if search.strip():
-    q = search.strip().lower()
-    searchable = filtered[["taxon", "from_code", "from_name", "to_code", "to_name", "title", "rationale"]].fillna("")
-    mask = searchable.apply(lambda col: col.str.lower().str.contains(q, regex=False)).any(axis=1)
-    filtered = filtered[mask]
+tab_batches, tab_table = st.tabs(["📦 Revisión por lotes", "📊 Tabla detallada"])
 
-st.caption(f"**{len(filtered)}** de {len(df)} sugerencias")
-st.divider()
+# ── Batch review ────────────────────────────────────────────────────────────────
+with tab_batches:
+    categories = list(df["category"].dropna().unique())
+    # Order: most pending first
+    order = df[df["status"] == "pending"]["category"].value_counts()
+    categories = list(order.index) + [c for c in categories if c not in order.index]
 
-# Preload every comment in a single query and group by suggestion, so rendering many
-# cards doesn't fire one DB round-trip per card (which stalled the page with ~2k rows).
-all_comments = get_all_ai_comments(db)
-comments_by_sid = dict(tuple(all_comments.groupby("suggestion_id"))) if not all_comments.empty else {}
+    for cat in categories:
+        batch = df[df["category"] == cat]
+        total = len(batch)
+        applied = int((batch["status"] == "approved").sum())
+        rejected = int((batch["status"] == "rejected").sum())
+        pending = batch[batch["status"] == "pending"]
+        waiting = int((pending["n_approve"] >= 1).sum())  # has 1 approval, needs 1 more
+        my_pending_approved = int((pending["my_vote"] == "approve").sum())
 
-view_cards, view_table = st.tabs(["🗂️ Tarjetas", "📊 Tabla"])
+        # Status-level filter on the batch
+        if status_filter == "Pendientes" and len(pending) == 0:
+            continue
+        if status_filter == "Esperando 2º voto" and waiting == 0:
+            continue
+        if status_filter == "Aplicadas" and applied == 0:
+            continue
+        if status_filter == "Rechazadas" and rejected == 0:
+            continue
 
+        sample_type = TYPE_LABEL.get(batch.iloc[0]["suggestion_type"], "—")
+        icon = CATEGORY_ICON.get(cat, "🔹")
 
-def _render_review_controls(row, ctx: str = "card"):
-    sid = int(row["id"])
-    if row["status"] == "pending":
-        c1, c2 = st.columns(2)
-        if c1.button("✅ Aprobar", key=f"appr_{ctx}_{sid}", type="primary", use_container_width=True):
-            approve_ai_suggestion(sid, row, expert, db)
-            st.rerun()
-        if c2.button("❌ Rechazar", key=f"rej_{ctx}_{sid}", use_container_width=True):
-            reject_ai_suggestion(sid, expert, db)
-            st.rerun()
-    else:
-        reviewer = row.get("reviewed_by") or "—"
-        st.caption(f"Revisado por **{reviewer}**")
+        with st.container(border=True):
+            st.markdown(f"## {icon} {cat}")
+            st.caption(f"{sample_type} · {total} sugerencias en el lote")
 
-    comments = comments_by_sid.get(sid)
-    n_comments = 0 if comments is None else len(comments)
-    with st.expander(f"💬 Comentarios ({n_comments})"):
-        if comments is None or comments.empty:
-            st.caption("Sin comentarios todavía.")
-        else:
-            for _, c in comments.iterrows():
-                ts = pd.to_datetime(c["created_at"]).strftime("%Y-%m-%d %H:%M")
-                st.markdown(f"**{c['expert']}** · _{ts}_")
-                st.markdown(f"> {c['comment']}")
-        new_comment = st.text_area("Agregar comentario:", key=f"comment_{ctx}_{sid}", height=70)
-        if st.button("Enviar comentario", key=f"send_{ctx}_{sid}"):
-            if new_comment.strip():
-                add_ai_suggestion_comment(sid, expert, new_comment.strip(), db)
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("✅ Aplicadas", applied)
+            c2.metric("🟡 Esperando 2º", waiting)
+            c3.metric("⚪ Sin votos", int((pending["n_approve"] == 0).sum()))
+            c4.metric("❌ Rechazadas", rejected)
+
+            if applied + rejected > 0:
+                st.progress((applied + rejected) / total, text=f"{applied + rejected}/{total} resueltas")
+
+            # Sample of taxa
+            sample = [t for t in batch["taxon"].dropna().head(10)]
+            if sample:
+                st.caption("**Ejemplos:** " + ", ".join(f"*{t}*" for t in sample)
+                           + (" …" if total > len(sample) else ""))
+
+            # My status in this batch
+            if my_pending_approved:
+                st.caption(f"👤 Ya aprobaste **{my_pending_approved}** sugerencias pendientes de este lote "
+                           "(esperando el voto de otro experto).")
+
+            # Drill-down: full list + exclude exceptions
+            with st.expander(f"🔍 Ver especies del lote y excluir excepciones ({total})"):
+                show = batch.copy()
+                show["estado"] = show["status"].map(STATUS_BADGE)
+                show["aprobaciones"] = show["n_approve"].astype(str) + f"/{MIN_CONSENSUS}"
+                show["tu voto"] = show["my_vote"].fillna("—")
+                st.dataframe(
+                    show[["taxon", "estado", "aprobaciones", "tu voto"]].rename(
+                        columns={"taxon": "Especie", "estado": "Estado",
+                                 "aprobaciones": "Aprob.", "tu voto": "Tu voto"}),
+                    use_container_width=True, hide_index=True, height=280,
+                )
+                exclude = st.multiselect(
+                    "Excluir estas especies de mi voto (excepciones):",
+                    options=sorted(pending["taxon"].dropna().unique()),
+                    key=f"excl_{cat}",
+                )
+
+            # Votable set: pending, not already approved by me, minus exclusions
+            excluded = set(st.session_state.get(f"excl_{cat}", []))
+            votable = pending[(pending["my_vote"] != "approve") & (~pending["taxon"].isin(excluded))]
+            votable_ids = [int(i) for i in votable["id"]]
+
+            bc1, bc2 = st.columns(2)
+            if bc1.button(f"✅ Aprobar lote ({len(votable_ids)})", key=f"appr_{cat}",
+                          type="primary", use_container_width=True, disabled=not votable_ids):
+                res = cast_ai_votes(votable_ids, expert, "approve", db)
+                get_ai_suggestions(db, force=True)
+                st.success(f"Registrado tu voto en {res['voted']} sugerencias · "
+                           f"{res['applied']} alcanzaron consenso y se aplicaron.")
                 st.rerun()
-            else:
-                st.warning("Escribe un comentario antes de enviarlo.")
+            if bc2.button(f"❌ Rechazar lote ({len(votable_ids)})", key=f"rej_{cat}",
+                          use_container_width=True, disabled=not votable_ids):
+                res = cast_ai_votes(votable_ids, expert, "reject", db)
+                get_ai_suggestions(db, force=True)
+                st.warning(f"Registrado tu rechazo en {res['voted']} sugerencias · "
+                           f"{res['rejected']} alcanzaron consenso de rechazo.")
+                st.rerun()
 
+            # Batch comments
+            with st.expander("💬 Comentarios del lote"):
+                cat_comments = batch_comments[batch_comments["category"] == cat]
+                if cat_comments.empty:
+                    st.caption("Sin comentarios.")
+                else:
+                    for _, cm in cat_comments.iterrows():
+                        ts = pd.to_datetime(cm["created_at"]).strftime("%Y-%m-%d %H:%M")
+                        st.markdown(f"**{cm['expert']}** · _{ts}_")
+                        st.markdown(f"> {cm['comment']}")
+                new_c = st.text_area("Agregar comentario al lote:", key=f"cmt_{cat}", height=70)
+                if st.button("Enviar comentario", key=f"sendc_{cat}"):
+                    if new_c.strip():
+                        add_batch_comment(cat, expert, new_c.strip(), db)
+                        st.rerun()
+                    else:
+                        st.warning("Escribe un comentario primero.")
 
-with view_cards:
-    if filtered.empty:
-        st.info("No hay sugerencias con estos filtros.")
-    else:
-        PAGE_SIZE = 20
-        total = len(filtered)
-        n_pages = (total + PAGE_SIZE - 1) // PAGE_SIZE
-
-        pc1, pc2 = st.columns([1, 3])
-        with pc1:
-            page = st.number_input(
-                f"Página (1–{n_pages})", min_value=1, max_value=n_pages, value=1, step=1,
-                key="cards_page",
-            )
-        start = (int(page) - 1) * PAGE_SIZE
-        end = min(start + PAGE_SIZE, total)
-        with pc2:
-            st.caption(f"Mostrando **{start + 1}–{end}** de {total} sugerencias")
-
-        page_df = filtered.iloc[start:end]
-        cols = st.columns(2)
-        for idx, (_, row) in enumerate(page_df.iterrows()):
-            col = cols[idx % 2]
-            with col:
-                with st.container(border=True):
-                    icon = TYPE_ICON.get(row["suggestion_type"], "🔹")
-                    label = TYPE_LABEL.get(row["suggestion_type"], row["suggestion_type"])
-                    st.markdown(f"### {icon} {row['title'] or label}")
-                    st.caption(f"{label} · {STATUS_BADGE.get(row['status'], row['status'])}")
-
-                    if row["suggestion_type"] == "move_species":
-                        st.markdown(f"**Especie:** *{row['taxon']}*")
-                        st.markdown(f"`{row['from_code']}` → `{row['to_code']}` — {row['to_name']}")
-                    elif row["suggestion_type"] == "remove_species":
-                        st.markdown(f"**Especie:** *{row['taxon']}*")
-                        st.markdown(f"Grupo actual: `{row['from_code']}` — {row['from_name']}")
-                    elif row["suggestion_type"] == "new_group":
-                        st.markdown(f"**Grupo propuesto:** `{row['to_code']}` — {row['to_name']}")
-                        if row.get("taxon"):
-                            st.caption(f"Especie origen: *{row['taxon']}* (`{row['from_code']}`)")
-                    elif row["suggestion_type"] == "modify_group":
-                        st.markdown(f"**Grupo:** `{row['from_code']}` — {row['from_name']}")
-
-                    if row.get("rationale"):
-                        st.markdown(f"_{row['rationale']}_")
-
-                    proposed_at = row.get("proposed_at")
-                    if pd.notna(proposed_at):
-                        st.caption(f"Propuesto por {row['proposed_by']} · {pd.to_datetime(proposed_at).strftime('%Y-%m-%d %H:%M')}")
-
-                    _render_review_controls(row)
-
-with view_table:
-    if filtered.empty:
-        st.info("No hay sugerencias con estos filtros.")
-    else:
-        table_df = filtered.copy()
-        table_df["tipo"] = table_df["suggestion_type"].map(lambda t: f"{TYPE_ICON.get(t, '')} {TYPE_LABEL.get(t, t)}")
-        table_df["estado"] = table_df["status"].map(STATUS_BADGE)
-        display_cols = ["id", "tipo", "taxon", "from_code", "to_code", "to_name", "title", "estado", "proposed_by", "proposed_at"]
-        st.dataframe(table_df[display_cols], use_container_width=True, hide_index=True)
-
-        st.divider()
-        st.markdown("#### Revisar una sugerencia por ID")
-        sel_id = st.number_input("ID:", min_value=int(filtered["id"].min()), max_value=int(filtered["id"].max()), step=1)
-        match = filtered[filtered["id"] == sel_id]
-        if not match.empty:
-            _render_review_controls(match.iloc[0], ctx="table")
+# ── Detailed table (for edge cases / search) ────────────────────────────────────
+with tab_table:
+    st.caption("Vista plana para búsqueda o auditoría. La aprobación se hace en la pestaña de lotes.")
+    search = st.text_input("Buscar por taxón, grupo o texto:", placeholder="Ej. Homo, GAS, insecto…")
+    view = df
+    if only_unvoted:
+        view = view[view["my_vote"].isna() & (view["status"] == "pending")]
+    if search.strip():
+        q = search.strip().lower()
+        cols = ["taxon", "from_code", "to_code", "to_name", "title", "rationale", "category"]
+        mask = view[cols].fillna("").apply(lambda c: c.str.lower().str.contains(q, regex=False)).any(axis=1)
+        view = view[mask]
+    show = view.copy()
+    show["estado"] = show["status"].map(STATUS_BADGE)
+    show["aprob"] = show["n_approve"].astype(str) + f"/{MIN_CONSENSUS}"
+    st.caption(f"{len(show)} sugerencias")
+    st.dataframe(
+        show[["id", "category", "suggestion_type", "taxon", "to_code", "estado", "aprob", "my_vote"]].rename(
+            columns={"category": "Lote", "suggestion_type": "Tipo", "taxon": "Especie",
+                     "to_code": "Destino", "estado": "Estado", "aprob": "Aprob.", "my_vote": "Tu voto"}),
+        use_container_width=True, hide_index=True,
+    )

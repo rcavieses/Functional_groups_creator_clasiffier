@@ -53,7 +53,7 @@ TYPE_LABEL = {
     "remove_species": "Quitar especie",
 }
 STATUS_BADGE = {"pending": "⏳ Pendiente", "approved": "✅ Aplicada", "rejected": "❌ Rechazada"}
-LEVEL_COL = {"Género": "genero", "Familia": "familia", "Orden": "orden"}
+LEVEL_COL = {"Género": "genero", "Familia": "familia", "Orden": "orden", "Clase": "clase", "Filum": "filum"}
 
 st.title("🤖 Validación de IA")
 st.caption(
@@ -104,6 +104,8 @@ def _taxon_map(col: str) -> dict:
 
 df["familia"] = df["taxon"].map(_taxon_map("family")).fillna("—")
 df["orden"] = df["taxon"].map(_taxon_map("order_taxon")).fillna("—")
+df["clase"] = df["taxon"].map(_taxon_map("class_taxon")).fillna("—")
+df["filum"] = df["taxon"].map(_taxon_map("phylum")).fillna("—")
 
 # Human-readable action per row (used by both tabs)
 df["accion"] = df["suggestion_type"].map(TYPE_LABEL).fillna(df["suggestion_type"])
@@ -185,7 +187,7 @@ with tab_batches:
             # Drill-down: full list + exclude exceptions
             with st.expander(f"🔍 Ver especies del lote y excluir excepciones ({total})"):
                 level = st.radio(
-                    "Agrupar por:", ["Especie", "Género", "Familia", "Orden"],
+                    "Agrupar por:", ["Especie", "Género", "Familia", "Orden", "Clase", "Filum"],
                     horizontal=True, key=f"level_{cat}",
                 )
                 show = batch.copy()
@@ -301,9 +303,10 @@ with tab_table:
     show["aprob"] = show["n_approve"].astype(str) + f"/{MIN_CONSENSUS}"
     st.caption(f"{len(show)} sugerencias")
     st.dataframe(
-        show[["id", "category", "orden", "familia", "genero", "taxon", "accion", "estado", "aprob", "my_vote", "criterio"]]
-        .rename(columns={"category": "Lote", "orden": "Orden", "familia": "Familia", "genero": "Género",
-                          "taxon": "Especie", "accion": "Acción", "estado": "Estado", "aprob": "Aprob.",
-                          "my_vote": "Tu voto", "criterio": "Criterio"}),
+        show[["id", "category", "filum", "clase", "orden", "familia", "genero", "taxon",
+              "accion", "estado", "aprob", "my_vote", "criterio"]]
+        .rename(columns={"category": "Lote", "filum": "Filum", "clase": "Clase", "orden": "Orden",
+                          "familia": "Familia", "genero": "Género", "taxon": "Especie", "accion": "Acción",
+                          "estado": "Estado", "aprob": "Aprob.", "my_vote": "Tu voto", "criterio": "Criterio"}),
         use_container_width=True, hide_index=True,
     )

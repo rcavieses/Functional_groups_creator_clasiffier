@@ -158,7 +158,7 @@ st.markdown(
     "| **📊 Validar Grupos** | Punto de partida: revisa cada grupo funcional, califica qué tan bien agrupadas están sus especies y comenta si algo no encaja. |\n"
     "| **🧬 Validar Taxonomía** | Revisa el grupo por género o familia y valida varias especies a la vez cuando toda la familia/género pertenece claramente al grupo. |\n"
     "| **✅ Validar Especies** | Vista especie por especie dentro de un grupo, con filtros por taxonomía (reino, filo, clase, orden, familia). Confirma, mueve o quita taxa uno a uno. |\n"
-    "| **🤖 AI Validación** | Revisa sugerencias de reclasificación generadas por IA y decide si aceptarlas o rechazarlas. |\n"
+    "| **🤖 Validación de IA** | Revisa sugerencias de reclasificación generadas por IA y decide si aceptarlas o rechazarlas. |\n"
     "| **📈 Dashboard** | Estadísticas generales de avance, comentarios de otros expertos y propuestas pendientes. |\n"
     "| **📊 Resultados** | Vista consolidada del estado final, grupos propuestos y descarga de resultados (CSV/JSON). |\n\n"
     "*(Solo administradores verán además la página de* **🔧 Admin***, para gestionar expertos y asignar grupos.)*"

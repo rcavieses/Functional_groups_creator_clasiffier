@@ -53,6 +53,7 @@ TYPE_LABEL = {
     "remove_species": "Quitar especie",
 }
 STATUS_BADGE = {"pending": "⏳ Pendiente", "approved": "✅ Aplicada", "rejected": "❌ Rechazada"}
+LEVEL_COL = {"Género": "genero", "Familia": "familia", "Orden": "orden"}
 
 st.title("🤖 Validación de IA")
 st.caption(
@@ -90,14 +91,19 @@ df["n_approve"] = df["id"].map(appr).fillna(0).astype(int)
 df["n_reject"] = df["id"].map(rej).fillna(0).astype(int)
 df["my_vote"] = df["id"].map(my_votes)
 
-# Taxonomic grouping helpers — genus from the taxon string, family from the species table
+# Taxonomic grouping helpers — genus from the taxon string, family/order from the species table
 df["genero"] = df["taxon"].fillna("").str.strip().str.split().str[0].replace("", "—")
 species_df = get_all_species(db)
-if not species_df.empty and "family" in species_df.columns:
-    family_map = species_df.dropna(subset=["taxon"]).set_index("taxon")["family"].to_dict()
-else:
-    family_map = {}
-df["familia"] = df["taxon"].map(family_map).fillna("—")
+
+
+def _taxon_map(col: str) -> dict:
+    if not species_df.empty and col in species_df.columns:
+        return species_df.dropna(subset=["taxon"]).set_index("taxon")[col].to_dict()
+    return {}
+
+
+df["familia"] = df["taxon"].map(_taxon_map("family")).fillna("—")
+df["orden"] = df["taxon"].map(_taxon_map("order_taxon")).fillna("—")
 
 # Human-readable action per row (used by both tabs)
 df["accion"] = df["suggestion_type"].map(TYPE_LABEL).fillna(df["suggestion_type"])
@@ -179,7 +185,7 @@ with tab_batches:
             # Drill-down: full list + exclude exceptions
             with st.expander(f"🔍 Ver especies del lote y excluir excepciones ({total})"):
                 level = st.radio(
-                    "Agrupar por:", ["Especie", "Género", "Familia"],
+                    "Agrupar por:", ["Especie", "Género", "Familia", "Orden"],
                     horizontal=True, key=f"level_{cat}",
                 )
                 show = batch.copy()
@@ -187,17 +193,23 @@ with tab_batches:
                 show["aprobaciones"] = show["n_approve"].astype(str) + f"/{MIN_CONSENSUS}"
                 show["tu voto"] = show["my_vote"].fillna("—")
 
+                checkbox_col = st.column_config.CheckboxColumn("Excluir", help="Excluir de mi voto")
+
                 if level == "Especie":
-                    st.dataframe(
-                        show[["taxon", "accion", "criterio", "estado", "aprobaciones", "tu voto"]].rename(
-                            columns={"taxon": "Especie", "accion": "Acción", "criterio": "Criterio",
-                                     "estado": "Estado", "aprobaciones": "Aprob.", "tu voto": "Tu voto"}),
-                        use_container_width=True, hide_index=True, height=280,
+                    tbl = show[["taxon", "accion", "criterio", "estado", "aprobaciones", "tu voto"]].rename(
+                        columns={"taxon": "Especie", "accion": "Acción", "criterio": "Criterio",
+                                 "estado": "Estado", "aprobaciones": "Aprob.", "tu voto": "Tu voto"}
+                    ).reset_index(drop=True)
+                    tbl.insert(0, "Excluir", False)
+                    edited = st.data_editor(
+                        tbl, use_container_width=True, hide_index=True, height=280,
+                        key=f"editor_{cat}_{level}",
+                        disabled=[c for c in tbl.columns if c != "Excluir"],
+                        column_config={"Excluir": checkbox_col},
                     )
-                    excl_options = sorted(pending["taxon"].dropna().unique())
-                    excl_label = "Excluir estas especies de mi voto (excepciones):"
+                    excluded_keys = set(edited.loc[edited["Excluir"], "Especie"])
                 else:
-                    group_col = "genero" if level == "Género" else "familia"
+                    group_col = LEVEL_COL[level]
                     grouped = show.groupby(group_col).agg(
                         Especies=("taxon", "count"),
                         Acción=("accion", lambda s: ", ".join(sorted(s.unique()))),
@@ -207,19 +219,21 @@ with tab_batches:
                         Rechazadas=("status", lambda s: int((s == "rejected").sum())),
                         Ejemplos=("taxon", lambda s: ", ".join(s.head(3))),
                     ).reset_index().rename(columns={group_col: level})
-                    st.dataframe(grouped, use_container_width=True, hide_index=True, height=280)
-                    excl_options = sorted(batch[group_col].dropna().unique())
-                    excl_label = f"Excluir estos {level.lower()}s de mi voto (excepciones):"
-
-                st.multiselect(excl_label, options=excl_options, key=f"excl_{cat}_{level}")
+                    grouped.insert(1, "Excluir", False)
+                    edited = st.data_editor(
+                        grouped, use_container_width=True, hide_index=True, height=280,
+                        key=f"editor_{cat}_{level}",
+                        disabled=[c for c in grouped.columns if c != "Excluir"],
+                        column_config={"Excluir": checkbox_col},
+                    )
+                    excluded_keys = set(edited.loc[edited["Excluir"], level])
 
             # Votable set: pending, not already approved by me, minus exclusions
-            selected_exclusions = set(st.session_state.get(f"excl_{cat}_{level}", []))
             if level == "Especie":
-                excluded = selected_exclusions
+                excluded = excluded_keys
             else:
-                group_col = "genero" if level == "Género" else "familia"
-                excluded = set(batch[batch[group_col].isin(selected_exclusions)]["taxon"])
+                group_col = LEVEL_COL[level]
+                excluded = set(batch[batch[group_col].isin(excluded_keys)]["taxon"])
             votable = pending[(pending["my_vote"] != "approve") & (~pending["taxon"].isin(excluded))]
             votable_ids = [int(i) for i in votable["id"]]
 
@@ -287,9 +301,9 @@ with tab_table:
     show["aprob"] = show["n_approve"].astype(str) + f"/{MIN_CONSENSUS}"
     st.caption(f"{len(show)} sugerencias")
     st.dataframe(
-        show[["id", "category", "genero", "familia", "taxon", "accion", "estado", "aprob", "my_vote", "criterio"]]
-        .rename(columns={"category": "Lote", "genero": "Género", "familia": "Familia", "taxon": "Especie",
-                          "accion": "Acción", "estado": "Estado", "aprob": "Aprob.", "my_vote": "Tu voto",
-                          "criterio": "Criterio"}),
+        show[["id", "category", "orden", "familia", "genero", "taxon", "accion", "estado", "aprob", "my_vote", "criterio"]]
+        .rename(columns={"category": "Lote", "orden": "Orden", "familia": "Familia", "genero": "Género",
+                          "taxon": "Especie", "accion": "Acción", "estado": "Estado", "aprob": "Aprob.",
+                          "my_vote": "Tu voto", "criterio": "Criterio"}),
         use_container_width=True, hide_index=True,
     )

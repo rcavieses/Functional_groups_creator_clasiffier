@@ -21,6 +21,7 @@ from sql_client import (
     cast_ai_votes,
     add_batch_comment,
     get_batch_comments,
+    load_species,
     MIN_CONSENSUS,
     expert_name_from_auth,
 )
@@ -53,6 +54,23 @@ TYPE_LABEL = {
 }
 STATUS_BADGE = {"pending": "⏳ Pendiente", "approved": "✅ Aplicada", "rejected": "❌ Rechazada"}
 
+# Alternative ways to bucket the review batches: the AI-assigned category label,
+# or any taxonomic rank from the species table (joined in below by `taxon`).
+GROUP_OPTIONS = {
+    "Lote (categoría IA)": "category",
+    "Reino": "kingdom",
+    "Filo": "phylum",
+    "Clase": "class_taxon",
+    "Orden": "order_taxon",
+    "Familia": "family",
+    "Género": "genus",
+}
+RANK_ICON = {
+    "kingdom": "👑", "phylum": "🧬", "class_taxon": "🧫",
+    "order_taxon": "📋", "family": "👪", "genus": "🔬",
+}
+SIN_TAXONOMIA = "(sin taxonomía)"
+
 st.title("🤖 AI Validación")
 st.caption(
     f"Sugerencias de **AI_expert**, agrupadas en lotes. Un cambio se aplica cuando "
@@ -68,6 +86,14 @@ df = get_ai_suggestions(db)
 votes = get_ai_votes(db)
 batch_comments = get_batch_comments(db)
 stats = get_ai_suggestions_stats(db)
+
+# Join in taxonomic ranks (from the species table) so batches can be grouped by
+# reino/filo/clase/orden/familia/género instead of only the AI's category label.
+if not df.empty:
+    tax_cols = ["taxon", "kingdom", "phylum", "class_taxon", "order_taxon", "family", "genus"]
+    species_df = load_species(db)
+    tax_lookup = species_df[[c for c in tax_cols if c in species_df.columns]].drop_duplicates(subset="taxon")
+    df = df.merge(tax_lookup, on="taxon", how="left")
 
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("Total sugerencias", stats["total"])
@@ -90,7 +116,7 @@ df["n_reject"] = df["id"].map(rej).fillna(0).astype(int)
 df["my_vote"] = df["id"].map(my_votes)
 
 # ── Filters ─────────────────────────────────────────────────────────────────────
-f0, f1, f2 = st.columns([1.4, 1.4, 1.4])
+f0, f1, f2, f3 = st.columns([1.4, 1.4, 1.4, 1.4])
 with f0:
     groups = sorted(df["from_code"].dropna().unique())
     group_filter = st.selectbox("Grupo de origen:", ["Todos"] + list(groups))
@@ -100,22 +126,30 @@ with f1:
     )
 with f2:
     only_unvoted = st.checkbox("Solo sugerencias que aún no he votado", value=False)
+with f3:
+    group_label = st.selectbox("Agrupar por:", list(GROUP_OPTIONS.keys()))
+    group_col = GROUP_OPTIONS[group_label]
 
 # Scope the whole view to one origin group when selected
 if group_filter != "Todos":
     df = df[df["from_code"] == group_filter]
 
+# Taxonomic ranks can be missing (e.g. species not yet matched to the taxonomy
+# table); bucket those under a visible label instead of dropping them silently.
+if group_col != "category":
+    df[group_col] = df[group_col].fillna(SIN_TAXONOMIA)
+
 tab_batches, tab_table = st.tabs(["📦 Revisión por lotes", "📊 Tabla detallada"])
 
 # ── Batch review ────────────────────────────────────────────────────────────────
 with tab_batches:
-    categories = list(df["category"].dropna().unique())
+    group_vals = list(df[group_col].dropna().unique())
     # Order: most pending first
-    order = df[df["status"] == "pending"]["category"].value_counts()
-    categories = list(order.index) + [c for c in categories if c not in order.index]
+    order = df[df["status"] == "pending"][group_col].value_counts()
+    group_vals = list(order.index) + [c for c in group_vals if c not in order.index]
 
-    for cat in categories:
-        batch = df[df["category"] == cat]
+    for cat in group_vals:
+        batch = df[df[group_col] == cat]
         total = len(batch)
         applied = int((batch["status"] == "approved").sum())
         rejected = int((batch["status"] == "rejected").sum())
@@ -134,11 +168,14 @@ with tab_batches:
             continue
 
         sample_type = TYPE_LABEL.get(batch.iloc[0]["suggestion_type"], "—")
-        icon = CATEGORY_ICON.get(cat, "🔹")
+        icon = CATEGORY_ICON.get(cat, "🔹") if group_col == "category" else RANK_ICON.get(group_col, "🔹")
+        # Namespace widget/comment keys by grouping dimension so switching "Agrupar por"
+        # can't collide with (or reuse) an unrelated bucket that happens to share a name.
+        bucket_key = cat if group_col == "category" else f"{group_col}:{cat}"
 
         with st.container(border=True):
             st.markdown(f"## {icon} {cat}")
-            st.caption(f"{sample_type} · {total} sugerencias en el lote")
+            st.caption(f"{group_label} · {sample_type} · {total} sugerencias en el lote")
 
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("✅ Aplicadas", applied)
@@ -175,16 +212,16 @@ with tab_batches:
                 exclude = st.multiselect(
                     "Excluir estas especies de mi voto (excepciones):",
                     options=sorted(pending["taxon"].dropna().unique()),
-                    key=f"excl_{cat}",
+                    key=f"excl_{bucket_key}",
                 )
 
             # Votable set: pending, not already approved by me, minus exclusions
-            excluded = set(st.session_state.get(f"excl_{cat}", []))
+            excluded = set(st.session_state.get(f"excl_{bucket_key}", []))
             votable = pending[(pending["my_vote"] != "approve") & (~pending["taxon"].isin(excluded))]
             votable_ids = [int(i) for i in votable["id"]]
 
             bc1, bc2 = st.columns(2)
-            if bc1.button(f"✅ Aprobar lote ({len(votable_ids)})", key=f"appr_{cat}",
+            if bc1.button(f"✅ Aprobar lote ({len(votable_ids)})", key=f"appr_{bucket_key}",
                           type="primary", use_container_width=True, disabled=not votable_ids):
                 holder = {}
                 if run_db_action(
@@ -196,7 +233,7 @@ with tab_batches:
                     st.success(f"Registrado tu voto en {res['voted']} sugerencias · "
                                f"{res['applied']} alcanzaron consenso y se aplicaron.")
                     st.rerun()
-            if bc2.button(f"❌ Rechazar lote ({len(votable_ids)})", key=f"rej_{cat}",
+            if bc2.button(f"❌ Rechazar lote ({len(votable_ids)})", key=f"rej_{bucket_key}",
                           use_container_width=True, disabled=not votable_ids):
                 holder = {}
                 if run_db_action(
@@ -211,7 +248,7 @@ with tab_batches:
 
             # Batch comments
             with st.expander("💬 Comentarios del lote"):
-                cat_comments = batch_comments[batch_comments["category"] == cat]
+                cat_comments = batch_comments[batch_comments["category"] == bucket_key]
                 if cat_comments.empty:
                     st.caption("Sin comentarios.")
                 else:
@@ -219,11 +256,11 @@ with tab_batches:
                         ts = pd.to_datetime(cm["created_at"]).strftime("%Y-%m-%d %H:%M")
                         st.markdown(f"**{cm['expert']}** · _{ts}_")
                         st.markdown(f"> {cm['comment']}")
-                new_c = st.text_area("Agregar comentario al lote:", key=f"cmt_{cat}", height=70)
-                if st.button("Enviar comentario", key=f"sendc_{cat}"):
+                new_c = st.text_area("Agregar comentario al lote:", key=f"cmt_{bucket_key}", height=70)
+                if st.button("Enviar comentario", key=f"sendc_{bucket_key}"):
                     if new_c.strip():
                         if run_db_action(
-                            lambda: add_batch_comment(cat, expert, new_c.strip(), db),
+                            lambda: add_batch_comment(bucket_key, expert, new_c.strip(), db),
                             success="Comentario agregado.",
                         ):
                             st.rerun()
@@ -239,7 +276,8 @@ with tab_table:
         view = view[view["my_vote"].isna() & (view["status"] == "pending")]
     if search.strip():
         q = search.strip().lower()
-        cols = ["taxon", "from_code", "to_code", "to_name", "title", "rationale", "category"]
+        cols = ["taxon", "from_code", "to_code", "to_name", "title", "rationale", "category",
+                "kingdom", "phylum", "class_taxon", "order_taxon", "family", "genus"]
         mask = view[cols].fillna("").apply(lambda c: c.str.lower().str.contains(q, regex=False)).any(axis=1)
         view = view[mask]
     show = view.copy()
@@ -247,8 +285,11 @@ with tab_table:
     show["aprob"] = show["n_approve"].astype(str) + f"/{MIN_CONSENSUS}"
     st.caption(f"{len(show)} sugerencias")
     st.dataframe(
-        show[["id", "category", "suggestion_type", "taxon", "to_code", "estado", "aprob", "my_vote"]].rename(
-            columns={"category": "Lote", "suggestion_type": "Tipo", "taxon": "Especie",
+        show[["id", "category", "kingdom", "phylum", "class_taxon", "order_taxon", "family", "genus",
+              "suggestion_type", "taxon", "to_code", "estado", "aprob", "my_vote"]].rename(
+            columns={"category": "Lote", "kingdom": "Reino", "phylum": "Filo", "class_taxon": "Clase",
+                     "order_taxon": "Orden", "family": "Familia", "genus": "Género",
+                     "suggestion_type": "Tipo", "taxon": "Especie",
                      "to_code": "Destino", "estado": "Estado", "aprob": "Aprob.", "my_vote": "Tu voto"}),
         use_container_width=True, hide_index=True,
     )

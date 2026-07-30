@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>reporte_comentarios_expertos</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="REPORTE_COMENTARIOS_EXPERTOS_files/libs/clipboard/clipboard.min.js"></script>
+<script src="REPORTE_COMENTARIOS_EXPERTOS_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="REPORTE_COMENTARIOS_EXPERTOS_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="REPORTE_COMENTARIOS_EXPERTOS_files/libs/quarto-html/popper.min.js"></script>
+<script src="REPORTE_COMENTARIOS_EXPERTOS_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="REPORTE_COMENTARIOS_EXPERTOS_files/libs/quarto-html/anchor.min.js"></script>
+<link href="REPORTE_COMENTARIOS_EXPERTOS_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="REPORTE_COMENTARIOS_EXPERTOS_files/libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="REPORTE_COMENTARIOS_EXPERTOS_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="REPORTE_COMENTARIOS_EXPERTOS_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="REPORTE_COMENTARIOS_EXPERTOS_files/libs/bootstrap/bootstrap-215b371544c282197b31c8aa00ce3677.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+
+
+
+<section id="reporte-comentarios-de-expertos-vs.-sugerencias-de-ia" class="level1">
+<h1>Reporte: Comentarios de expertos vs.&nbsp;sugerencias de IA</h1>
+<p><strong>Fecha del reporte:</strong> 2026-07-22 <strong>Fuente de datos:</strong> Azure SQL (<code>group_ratings</code>, <code>ai_suggestions</code>, <code>ai_suggestion_comments</code>, <code>ai_batch_comments</code>) <strong>Comentarios analizados:</strong> 23 comentarios de expertos, registrados el 2026-06-16 durante la ronda de calificación de grupos funcionales.</p>
+<section id="metodología" class="level2">
+<h2 class="anchored" data-anchor-id="metodología">Metodología</h2>
+<ol type="1">
+<li>Se extrajeron todos los comentarios con texto no vacío de <code>group_ratings</code> (calificación + comentario por experto y grupo).</li>
+<li>Se revisó <code>ai_suggestions</code> (agrupadas por <code>category</code>) para ver qué lotes de sugerencias de IA ya se han generado desde entonces.</li>
+<li>Se verificó el estado <strong>actual</strong> de cada grupo mencionado directamente en la tabla <code>species</code> (composición taxonómica real), no solo lo que dice el nombre del grupo.</li>
+<li>No se encontraron registros en <code>ai_suggestion_comments</code> ni <code>ai_batch_comments</code> (0 filas) — ningún experto ha comentado todavía sobre los lotes de sugerencias de IA ya filed (GAS, PWO, BEC, barrido de terrestres).</li>
+</ol>
+</section>
+<section id="resumen-ejecutivo" class="level2">
+<h2 class="anchored" data-anchor-id="resumen-ejecutivo">Resumen ejecutivo</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Estado</th>
+<th># comentarios</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>✅ Ya resuelto (la reestructuración de grupos ya lo corrigió)</td>
+<td>2</td>
+</tr>
+<tr class="even">
+<td>⚠️ Pendiente — acción de datos aún no tomada</td>
+<td>7</td>
+</tr>
+<tr class="odd">
+<td>💬 Juicio cualitativo de manejo pesquero (no requiere corrección de datos)</td>
+<td>14</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="comentarios-ya-resueltos" class="level2">
+<h2 class="anchored" data-anchor-id="comentarios-ya-resueltos">Comentarios ya resueltos</h2>
+<section id="cor-cro-corvinas" class="level3">
+<h3 class="anchored" data-anchor-id="cor-cro-corvinas">COR / CRO — Corvinas</h3>
+<p><strong>Experto:</strong> Mariana Walther Mendoza <strong>Comentario original:</strong> <em>“pasar las corvinas al grupo de CRO - creo que fue un error incluirlas en este grupo [Corals and Anemones]”</em> <strong>Estado actual:</strong> ✅ Resuelto. COR ahora contiene únicamente <em>Cynoscion othonopterus</em> (grupo “Corvinas”), y CRO (“Drums and croakers”) tiene 37 sciénidos como grupo separado. La reestructuración posterior a junio ya separó ambos grupos correctamente.</p>
+</section>
+<section id="sur-peces-en-el-grupo-de-erizos" class="level3">
+<h3 class="anchored" data-anchor-id="sur-peces-en-el-grupo-de-erizos">SUR — peces en el grupo de erizos</h3>
+<p><strong>Experto:</strong> Adrian Munguia Vega <strong>Comentario original:</strong> <em>“Checar que hay varias especies de peces en este grupo de erizos!”</em> <strong>Estado actual:</strong> ✅ Resuelto. Los erizos de mar ahora viven en el código <strong>SEU</strong> (27 especies, todas Echinoidea/Echinodermata, sin peces). El código SUR pasó a ser “Surgeonfish” (peces cirujano reales: <em>Acanthurus</em>, <em>Prionurus</em>, <em>Zebrasoma</em>).</p>
+</section>
+</section>
+<section id="comentarios-pendientes-acción-de-datos-no-tomada" class="level2">
+<h2 class="anchored" data-anchor-id="comentarios-pendientes-acción-de-datos-no-tomada">Comentarios pendientes (acción de datos no tomada)</h2>
+<section id="sna-snappers" class="level3">
+<h3 class="anchored" data-anchor-id="sna-snappers">SNA — Snappers</h3>
+<p><strong>Experto:</strong> Frida Cisneros Soberanis <strong>Comentario:</strong> <em>“Consideraría separar a Lutjanus peru por estrategias de manejo que se están realizando (Plan de Manejo) y de mercado (Proyectos de Mejora pesquera)”</em> <strong>Estado actual:</strong> Sin cambios. <em>Lutjanus peru</em> sigue agrupado junto a los otros 11 lutjánidos (incluye <em>L. argentiventris</em>, <em>L. guttatus</em>, <em>L. colorado</em>, etc.). El grupo de referencia “Small snappers” (OSN) existe en <code>data/functional_groups_final.csv</code> pero no está en uso.</p>
+</section>
+<section id="biv-bivalves" class="level3">
+<h3 class="anchored" data-anchor-id="biv-bivalves">BIV — Bivalves</h3>
+<p><strong>Experto:</strong> Mariana Walther Mendoza <strong>Comentario:</strong> <em>“Propongo separar especies introducidas como ostión japonés, versus especies nativas”</em> <strong>Estado actual:</strong> Sin cambios. Bloque único de 439 especies, sin distinción nativa/introducida.</p>
+</section>
+<section id="twh-toothed-whales" class="level3">
+<h3 class="anchored" data-anchor-id="twh-toothed-whales">TWH — Toothed Whales</h3>
+<p><strong>Experta:</strong> Gabriela Cruz Piñón <strong>Comentario:</strong> <em>“Orca debería ser un grupo funcional aparte”</em> <strong>Estado actual:</strong> Sin cambios — <em>Orcinus orca</em> no aparece en TWH (no se pudo confirmar dónde está clasificada actualmente). <strong>Hallazgo adicional:</strong> TWH está contaminado con <em>Lima lima</em>, que es un <strong>bivalvo</strong> (no un cetáceo), mezclado con las 7 especies reales de ballenas/delfines dentudos.</p>
+</section>
+<section id="spo-sponges-and-tunicates" class="level3">
+<h3 class="anchored" data-anchor-id="spo-sponges-and-tunicates">SPO — Sponges and Tunicates</h3>
+<p><strong>Experto:</strong> Adrian Munguia Vega <strong>Comentario:</strong> <em>“Se podrían incluir aquí todos los corales blandos filtradores también (Alcyonacea)”</em> <strong>Estado actual:</strong> No se agregaron Alcyonacea — ninguno de los 308 táxones actuales de SPO pertenece a ese orden. <strong>Hallazgo adicional:</strong> el grupo tiene contaminación taxonómica — <em>Trametes cinnabarina</em> es un <strong>hongo</strong> (Basidiomycetes), no una esponja ni tunicado.</p>
+</section>
+<section id="bb-benthic-bacteria" class="level3">
+<h3 class="anchored" data-anchor-id="bb-benthic-bacteria">BB — Benthic Bacteria</h3>
+<p><strong>Experto:</strong> Leonardo Vazquez <strong>Comentario:</strong> <em>“Incluir bacterias de ventilas hidrotermales”</em> <strong>Estado actual:</strong> No se agregaron. El grupo está fuertemente contaminado con hongos y organismos no marinos, incluyendo <strong>patógenos humanos</strong> (<em>Clostridioides difficile</em>, <em>Blautia wexlerae</em> — microbioma intestinal humano). Ya existen 28 sugerencias de IA filed (categoría “Terrestres · Hongos y líquenes”) para reclasificar parte de este contenido, pero <strong>siguen en estado <code>pending</code></strong> — no han alcanzado el consenso de 2 expertos requerido para aplicarse.</p>
+</section>
+<section id="opi-other-pinnipeds" class="level3">
+<h3 class="anchored" data-anchor-id="opi-other-pinnipeds">OPI — Other Pinnipeds</h3>
+<p><strong>Experta:</strong> Gabriela Cruz Piñón <strong>Comentario:</strong> <em>“Phoca vitulina ya no es relevante en el GC. Lobo fino de Guadalupe es muy importante porque su población va en aumento.”</em> <strong>Estado actual:</strong> <em>Phoca vitulina</em> efectivamente ya no está en el grupo (coincide con el comentario, aunque no se puede confirmar si fue removida a raíz de este comentario o por otra razón). <strong>Hallazgo adicional:</strong> OPI está muy contaminado — contiene serpientes (<em>Coluber</em>, <em>Masticophis</em>, <em>Gyalopion</em>, <em>Mastigodryas</em>), un murciélago (<em>Parastrellus hesperus</em>), una planta (<em>Castela peninsularis</em>) y un bivalvo (<em>Martesia striata</em>) mezclados con los pinnípedos reales (<em>Arctocephalus</em>, <em>Mirounga</em>).</p>
+</section>
+<section id="obi-other-benthic-invertebrates" class="level3">
+<h3 class="anchored" data-anchor-id="obi-other-benthic-invertebrates">OBI — Other Benthic Invertebrates</h3>
+<p><strong>Experto:</strong> Adrian Munguia Vega <strong>Comentario:</strong> <em>“Crear un grupo funcional con infauna (nematodos, poliquetos, anfípodos, etc.)”</em> <strong>Estado actual:</strong> Parcialmente en curso. Ya se han extraído poliquetos (→ PWO, 29 sugerencias) y cangrejos bentónicos (→ BEC, 59 sugerencias) del catch-all OBI, además del barrido reciente de gasterópodos (→ GAS, 18 sugerencias de limpieza). Sin embargo OBI sigue con <strong>2,337 especies</strong> pendientes de depurar, y no existe todavía un grupo “infauna” dedicado como tal.</p>
+</section>
+</section>
+<section id="comentarios-cualitativos-no-requieren-corrección-de-datos" class="level2">
+<h2 class="anchored" data-anchor-id="comentarios-cualitativos-no-requieren-corrección-de-datos">Comentarios cualitativos (no requieren corrección de datos)</h2>
+<p>Estos son juicios de manejo pesquero/ecológico sobre la importancia relativa de un grupo, no señalan errores de clasificación:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Grupo</th>
+<th>Experto</th>
+<th>Comentario (resumen)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>BIL</td>
+<td>Ricardo Cavieses</td>
+<td>(sin texto, calificación 5)</td>
+</tr>
+<tr class="even">
+<td>LRA</td>
+<td>Fernando Aranceta</td>
+<td>Baja relevancia actual para el ecosistema</td>
+</tr>
+<tr class="odd">
+<td>OCT</td>
+<td>Frida Cisneros</td>
+<td>Importancia pesquera en Grandes Islas</td>
+</tr>
+<tr class="even">
+<td>BSH</td>
+<td>Fernando Aranceta</td>
+<td>Importancia geográfica (Centro de Sinaloa al Norte)</td>
+</tr>
+<tr class="odd">
+<td>MA</td>
+<td>Fernando Aranceta</td>
+<td>Estacionalidad de sargazo/ulva</td>
+</tr>
+<tr class="even">
+<td>HHS</td>
+<td>James Ketchum</td>
+<td>Faltan 3 especies de tiburón martillo pequeñas; <em>S. mokarran</em> extirpado del GC</td>
+</tr>
+<tr class="odd">
+<td>RPL</td>
+<td>Fernando Aranceta</td>
+<td>Rol ecológico como alimento</td>
+</tr>
+<tr class="even">
+<td>SNA (2º comentario)</td>
+<td>Mariana Walther</td>
+<td>Importancia socioeconómica</td>
+</tr>
+<tr class="odd">
+<td>RPI</td>
+<td>Fernando Aranceta</td>
+<td>Presencia en monitoreos pesqueros</td>
+</tr>
+<tr class="even">
+<td>OSP</td>
+<td>Fernando Aranceta</td>
+<td>Importancia de agregaciones en Bahía de los Ángeles</td>
+</tr>
+<tr class="odd">
+<td>LCS</td>
+<td>Frida Cisneros</td>
+<td>Agrupar por nivel de protección/manejo</td>
+</tr>
+<tr class="even">
+<td>ZS</td>
+<td>Mariana Walther</td>
+<td>Alta importancia trófica</td>
+</tr>
+<tr class="odd">
+<td>BPI</td>
+<td>Fernando Aranceta</td>
+<td>Grupo poco abundante</td>
+</tr>
+</tbody>
+</table>
+<blockquote class="blockquote">
+<p>Nota sobre HHS: el comentario de James Ketchum sí es potencialmente accionable (agregar <em>S. corona</em>, <em>S. tiburo</em>, <em>S. media</em>) — no se verificó su presencia actual en este reporte porque requiere una revisión taxonómica dedicada, similar al barrido terrestre ya hecho.</p>
+</blockquote>
+</section>
+<section id="próximos-pasos-sugeridos" class="level2">
+<h2 class="anchored" data-anchor-id="próximos-pasos-sugeridos">Próximos pasos sugeridos</h2>
+<ol type="1">
+<li><strong>Limpieza de contaminación no marina</strong> en OPI, TWH y BB (serpientes, murciélago, bivalvo, hongo, bacterias de microbioma humano) — mismo patrón que el barrido terrestre ya aplicado a otros grupos.</li>
+<li><strong>Revisar consenso pendiente</strong> de las 28 sugerencias de BB filed en <code>pages/Validación_de_IA.py</code>.</li>
+<li><strong>Generar sugerencias formales</strong> (vía <code>create_ai_suggestion</code>) para los 7 ítems pendientes de esta lista, en particular BIV (ostión japonés vs.&nbsp;nativas) y SNA (<em>Lutjanus peru</em>).</li>
+<li><strong>Verificar HHS</strong> — agregar las 3 especies de tiburón martillo faltantes si no están ya en la base.</li>
+</ol>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

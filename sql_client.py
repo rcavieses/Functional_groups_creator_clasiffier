@@ -937,7 +937,7 @@ def reject_ai_suggestion(suggestion_id: int, expert: str, db):
 
 # ── Consensus voting ────────────────────────────────────────────────────────────
 
-MIN_CONSENSUS = 2  # distinct experts required to apply a suggestion
+MIN_CONSENSUS = 1  # distinct experts required to apply a suggestion
 
 
 def get_ai_votes(db) -> pd.DataFrame:

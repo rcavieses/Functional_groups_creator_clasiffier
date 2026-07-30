@@ -3,7 +3,7 @@ AI Validación — Revisión por lotes con consenso
 
 Las sugerencias de la cuenta AI_expert se agrupan en lotes taxonómicos.
 Los expertos aprueban/rechazan lotes completos (pudiendo excluir excepciones).
-Un cambio se aplica solo cuando DOS expertos distintos lo aprueban (consenso).
+Un cambio se aplica en cuanto UN experto lo aprueba.
 """
 
 from pathlib import Path
@@ -56,9 +56,12 @@ STATUS_BADGE = {"pending": "⏳ Pendiente", "approved": "✅ Aplicada", "rejecte
 LEVEL_COL = {"Género": "genero", "Familia": "familia", "Orden": "orden", "Clase": "clase", "Filum": "filum"}
 
 st.title("🤖 Validación de IA")
+_consensus_txt = (
+    "**1 experto** lo aprueba" if MIN_CONSENSUS == 1
+    else f"**{MIN_CONSENSUS} expertos distintos** lo aprueban (consenso)"
+)
 st.caption(
-    f"Sugerencias de **AI_expert**, agrupadas en lotes. Un cambio se aplica cuando "
-    f"**{MIN_CONSENSUS} expertos distintos** lo aprueban (consenso)."
+    f"Sugerencias de **AI_expert**, agrupadas en lotes. Un cambio se aplica cuando {_consensus_txt}."
 )
 
 if st.button("🔄 Recargar", use_container_width=False):
@@ -120,7 +123,7 @@ with f0:
     group_filter = st.selectbox("Grupo de origen:", ["Todos"] + list(groups))
 with f1:
     status_filter = st.selectbox(
-        "Mostrar lotes con estado:", ["Todos", "Pendientes", "Esperando 2º voto", "Aplicadas", "Rechazadas"]
+        "Mostrar lotes con estado:", ["Todos", "Pendientes", "Aplicadas", "Rechazadas"]
     )
 with f2:
     only_unvoted = st.checkbox("Solo sugerencias que aún no he votado", value=False)
@@ -144,13 +147,9 @@ with tab_batches:
         applied = int((batch["status"] == "approved").sum())
         rejected = int((batch["status"] == "rejected").sum())
         pending = batch[batch["status"] == "pending"]
-        waiting = int((pending["n_approve"] >= 1).sum())  # has 1 approval, needs 1 more
-        my_pending_approved = int((pending["my_vote"] == "approve").sum())
 
         # Status-level filter on the batch
         if status_filter == "Pendientes" and len(pending) == 0:
-            continue
-        if status_filter == "Esperando 2º voto" and waiting == 0:
             continue
         if status_filter == "Aplicadas" and applied == 0:
             continue
@@ -164,10 +163,12 @@ with tab_batches:
             st.markdown(f"## {icon} {cat}")
             st.caption(f"{sample_type} · {total} sugerencias en el lote")
 
+            total_votes = int((batch["n_approve"] + batch["n_reject"]).sum())
+
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("✅ Aplicadas", applied)
-            c2.metric("🟡 Esperando 2º", waiting)
-            c3.metric("⚪ Sin votos", int((pending["n_approve"] == 0).sum()))
+            c2.metric("🗳️ Votos registrados", total_votes)
+            c3.metric("⚪ Sin votos", int((pending["n_approve"] + pending["n_reject"] == 0).sum()))
             c4.metric("❌ Rechazadas", rejected)
 
             if applied + rejected > 0:
@@ -178,11 +179,6 @@ with tab_batches:
             if sample:
                 st.caption("**Ejemplos:** " + ", ".join(f"*{t}*" for t in sample)
                            + (" …" if total > len(sample) else ""))
-
-            # My status in this batch
-            if my_pending_approved:
-                st.caption(f"👤 Ya aprobaste **{my_pending_approved}** sugerencias pendientes de este lote "
-                           "(esperando el voto de otro experto).")
 
             # Drill-down: full list + exclude exceptions
             with st.expander(f"🔍 Ver especies del lote y excluir excepciones ({total})"):

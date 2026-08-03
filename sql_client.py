@@ -686,12 +686,11 @@ def propose_new_group(
         with db.begin() as conn:
             conn.execute(
                 text("""INSERT INTO group_proposals
-                        (type, group_code, group_name, description, taxon_origin, from_code, proposed_by, status)
-                        VALUES ('new_group', :group_code, :group_name, :description, :taxon, :from_code, :expert, 'pending')"""),
+                        (type, group_code, group_name, description, proposed_by, status)
+                        VALUES ('new_group', :group_code, :group_name, :description, :expert, 'pending')"""),
                 {
                     "group_code": group_code.upper(), "group_name": group_name,
-                    "description": description, "taxon": taxon,
-                    "from_code": from_code, "expert": expert,
+                    "description": description, "expert": expert,
                 },
             )
             _sql_update_species(conn, taxon, updates)
@@ -1037,6 +1036,62 @@ def add_batch_comment(category: str, expert: str, comment: str, db):
 
 def get_batch_comments(db) -> pd.DataFrame:
     return pd.read_sql("SELECT category, expert, comment, created_at FROM ai_batch_comments ORDER BY created_at ASC", db)
+
+
+# ── Expert group-restructuring proposals (modification/deletion/new_group) ──────
+
+_GROUP_PROPOSALS_DF_KEY = "_group_proposals_df"
+
+
+def get_group_proposals_df(db, force: bool = False) -> pd.DataFrame:
+    """All rows in `group_proposals` — free-text restructuring proposals from experts
+    (split/merge/delete a functional group), as opposed to the per-species AI_expert
+    suggestions in `ai_suggestions`."""
+    if not force and _GROUP_PROPOSALS_DF_KEY in st.session_state:
+        return st.session_state[_GROUP_PROPOSALS_DF_KEY]
+    df = pd.read_sql("SELECT * FROM group_proposals ORDER BY proposed_at ASC", db)
+    st.session_state[_GROUP_PROPOSALS_DF_KEY] = df
+    return df
+
+
+def resolve_group_proposal(proposal_id: int, status: str, expert: str, db, note: str = ""):
+    """Mark a group-restructuring proposal approved/rejected and leave an audit trail.
+
+    Does not by itself move any species — pair with `apply_group_proposal_changes`
+    when the proposal also implies moving/removing the group's current members.
+    """
+    from sqlalchemy import text
+
+    def _txn():
+        with db.begin() as conn:
+            conn.execute(
+                text("UPDATE group_proposals SET status = :status WHERE id = :pid"),
+                {"status": status, "pid": proposal_id},
+            )
+            conn.execute(
+                text("""INSERT INTO audit_log (taxon, action, expert, from_code, to_code, to_name, note, timestamp)
+                        VALUES (NULL, :action, :expert, NULL, NULL, NULL, :note, GETDATE())"""),
+                {"action": f"proposal_{status}", "expert": expert, "note": note or f"Propuesta #{proposal_id}"},
+            )
+
+    _with_retry(_txn)
+    if _GROUP_PROPOSALS_DF_KEY in st.session_state:
+        del st.session_state[_GROUP_PROPOSALS_DF_KEY]
+
+
+REMOVE_TARGET = "__REMOVE__"
+
+
+def apply_group_proposal_changes(
+    taxa: list[str], from_code: str, to_code: str, to_name: str, expert: str, note: str, db,
+):
+    """Move (or, if to_code == REMOVE_TARGET, remove) a batch of species as part of
+    applying an expert's group-restructuring proposal."""
+    for taxon in taxa:
+        if to_code == REMOVE_TARGET:
+            remove_species(taxon, from_code, expert, note, db)
+        else:
+            move_species(taxon, from_code, to_code, to_name, expert, note, db)
 
 
 # ── User management ────────────────────────────────────────────────────────────

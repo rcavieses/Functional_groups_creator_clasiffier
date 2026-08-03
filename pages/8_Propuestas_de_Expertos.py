@@ -19,6 +19,7 @@ from sql_client import (
     get_species_for_group,
     resolve_group_proposal,
     apply_group_proposal_changes,
+    propose_new_group_detailed,
     expert_name_from_auth,
     REMOVE_TARGET,
 )
@@ -88,8 +89,12 @@ if view.empty:
     st.info("No hay propuestas con ese filtro.")
     st.stop()
 
-target_options = ["— No mover especies —"] + [f"{code} — {name}" for code, name in sorted(all_groups.items())
-                                                if not code.startswith("PROP_")] + ["🗑️ Eliminar especies seleccionadas"]
+NEW_GROUP_OPTION = "➕ Crear grupo nuevo…"
+target_options = (
+    ["— No mover especies —", NEW_GROUP_OPTION]
+    + [f"{code} — {name}" for code, name in sorted(all_groups.items()) if not code.startswith("PROP_")]
+    + ["🗑️ Eliminar especies seleccionadas"]
+)
 
 for _, prop in view.iterrows():
     pid = int(prop["id"])
@@ -161,26 +166,60 @@ for _, prop in view.iterrows():
                     selected_taxa = list(show[show[group_col].isin(picked)]["taxon"])
 
         target_label = None
+        new_code = new_name = ""
+        to_code = to_name = None
         if n_affected > 0 and status == "pending":
             target_label = st.selectbox(
                 "Al aplicar, mover las especies seleccionadas a:", target_options, key=f"target_{pid}",
             )
+            if target_label == NEW_GROUP_OPTION:
+                ncol1, ncol2 = st.columns(2)
+                new_code = ncol1.text_input("Código del grupo nuevo (ej. MNG)", key=f"newcode_{pid}").strip().upper()
+                new_name = ncol2.text_input("Nombre del grupo nuevo (ej. Manglares)", key=f"newname_{pid}").strip()
+                if new_code and new_code in all_groups:
+                    st.error(f"El código '{new_code}' ya existe ({all_groups[new_code]}). Elige otro.")
+
+        # ── Resultado esperado: qué grupos quedarán y con cuántas especies ──────
+        if n_affected > 0 and status == "pending":
+            n_selected = len(selected_taxa)
+            n_remaining = n_affected - n_selected
+            lines = [f"- **{code} — {name}**: quedará con **{n_remaining}** especie(s)."]
+            if n_selected == 0:
+                lines.append("- Ninguna especie seleccionada todavía — marca casillas arriba para incluirlas en el cambio.")
+            elif target_label in (None, "— No mover especies —"):
+                lines.append(f"- **{n_selected}** especie(s) seleccionada(s), pero no se moverán (destino: *no mover*).")
+            elif target_label == "🗑️ Eliminar especies seleccionadas":
+                to_code, to_name = REMOVE_TARGET, None
+                lines.append(f"- Se **eliminarán** **{n_selected}** especie(s) seleccionada(s).")
+            elif target_label == NEW_GROUP_OPTION:
+                if new_code and new_name:
+                    to_code, to_name = f"PROP_{new_code}", f"[Propuesto] {new_name}"
+                    lines.append(f"- Se creará el grupo nuevo **{new_code} — {new_name}** (marcado como propuesto hasta formalizarse) con **{n_selected}** especie(s).")
+                else:
+                    lines.append("- Falta indicar código y nombre del grupo nuevo para poder aplicar.")
+            else:
+                to_code, to_name = target_label.split(" — ", 1)
+                lines.append(f"- Se moverán **{n_selected}** especie(s) a **{target_label}** (grupo existente).")
+            st.info("**📋 Resultado esperado al aplicar:**\n" + "\n".join(lines))
 
         bc1, bc2 = st.columns(2)
-        apply_disabled = status != "pending"
+        apply_disabled = status != "pending" or bool(
+            n_affected > 0 and selected_taxa and target_label == NEW_GROUP_OPTION and not (new_code and new_name)
+        )
         if bc1.button("✅ Aplicar cambios", key=f"apply_{pid}", type="primary",
                       use_container_width=True, disabled=apply_disabled):
-            def _do_apply(pid=pid, code=code, target_label=target_label, selected_taxa=selected_taxa, prop=prop):
-                if selected_taxa and target_label and target_label != "— No mover especies —":
-                    if target_label == "🗑️ Eliminar especies seleccionadas":
-                        to_code, to_name = REMOVE_TARGET, None
-                    else:
-                        to_code, to_name = target_label.split(" — ", 1)
-                    apply_group_proposal_changes(
-                        selected_taxa, code, to_code, to_name, expert,
-                        f"Aplicado desde propuesta de experto #{pid} ({prop.get('proposed_by')}): {prop.get('reason') or prop.get('description') or ''}",
-                        db,
+            def _do_apply(pid=pid, code=code, to_code=to_code, to_name=to_name, selected_taxa=selected_taxa,
+                          prop=prop, new_code=new_code, new_name=new_name, target_label=target_label):
+                note = f"Aplicado desde propuesta de experto #{pid} ({prop.get('proposed_by')}): {prop.get('reason') or prop.get('description') or ''}"
+                if target_label == NEW_GROUP_OPTION and new_code and new_name:
+                    propose_new_group_detailed(
+                        new_code, new_name,
+                        description=f"Creado al aplicar la propuesta #{pid} sobre {code} — {prop.get('group_name')}.",
+                        justification=prop.get("reason") or prop.get("description") or "",
+                        expert=expert, db=db,
                     )
+                if selected_taxa and to_code:
+                    apply_group_proposal_changes(selected_taxa, code, to_code, to_name, expert, note, db)
                 resolve_group_proposal(pid, "approved", expert, db, note=prop.get("reason") or prop.get("description") or "")
 
             if run_db_action(_do_apply, spinner="Aplicando cambio…"):

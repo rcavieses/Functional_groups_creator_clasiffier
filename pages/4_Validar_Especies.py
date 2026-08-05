@@ -23,6 +23,7 @@ from sql_client import (
     move_species,
     restore_species,
     propose_new_group,
+    set_group_description,
     expert_name_from_auth,
 )
 from ui_helpers import run_db_action
@@ -49,11 +50,17 @@ def load_groups() -> dict[str, str]:
 
 
 all_groups = load_groups()
-nav_groups = {c: n for c, n in all_groups.items() if not c.startswith("PROP_")}
 
-# Add UNCLASSIFIED dynamically if there are species there
-_summary_check = get_groups_summary(db)
-if "UNCLASSIFIED" in _summary_check:
+# `nav_groups` — every group a species can currently live in or be moved to.
+# Built from the live `species` table (so groups created after the static CSV was
+# written — GAC, LPF, MAR, GRO, etc. — show up too), falling back to the static
+# 19-group reference for any legacy code that currently has 0 species.
+summary = get_groups_summary(db)
+nav_groups = {c: (s["name"] or all_groups.get(c, c)) for c, s in summary.items() if c != "UNCLASSIFIED"}
+for c, n in all_groups.items():
+    if not c.startswith("PROP_"):
+        nav_groups.setdefault(c, n)
+if "UNCLASSIFIED" in summary:
     nav_groups["UNCLASSIFIED"] = "Sin clasificar"
 
 
@@ -62,20 +69,64 @@ if "UNCLASSIFIED" in _summary_check:
 @st.dialog("↔ Mover especie", width="small")
 def dlg_move(taxon: str, from_code: str):
     st.markdown(f"**{taxon}**")
-    st.caption(f"Grupo actual: {from_code} — {all_groups.get(from_code, '')}")
-    options = {f"{c} — {n}": (c, n) for c, n in nav_groups.items() if c != from_code}
-    choice = st.selectbox("Grupo destino:", list(options.keys()))
-    note = st.text_input("Nota (opcional):", placeholder="¿Por qué mueves esta especie?")
-    col1, col2 = st.columns(2)
-    if col1.button("Mover", type="primary", use_container_width=True):
-        to_code, to_name = options[choice]
-        if run_db_action(
-            lambda: move_species(taxon, from_code, to_code, to_name, expert, note, db),
-            success=f"{taxon} movida a {to_code}.",
-        ):
+    st.caption(f"Grupo actual: {from_code} — {nav_groups.get(from_code, '')}")
+
+    search = st.text_input(
+        "Código del grupo destino:",
+        placeholder="Escribe el código para buscarlo, ej. BEC",
+        key=f"move_search_{taxon}",
+    ).strip().upper()
+
+    candidates = {c: n for c, n in nav_groups.items() if c != from_code}
+    matches = (
+        {c: n for c, n in candidates.items() if search in c.upper() or search in n.upper()}
+        if search else candidates
+    )
+
+    note = st.text_input(
+        "Nota (opcional):", placeholder="¿Por qué mueves esta especie?", key=f"move_note_{taxon}",
+    )
+
+    if matches:
+        options = {f"{c} — {n}": (c, n) for c, n in sorted(matches.items())}
+        keys = list(options.keys())
+        default_idx = next((i for i, k in enumerate(keys) if k.startswith(f"{search} —")), 0) if search else 0
+        choice = st.selectbox(
+            f"Coincidencias ({len(matches)}):", keys, index=default_idx, key=f"move_choice_{taxon}",
+        )
+        col1, col2 = st.columns(2)
+        if col1.button("Mover", type="primary", use_container_width=True, key=f"move_go_{taxon}"):
+            to_code, to_name = options[choice]
+            if run_db_action(
+                lambda: move_species(taxon, from_code, to_code, to_name, expert, note, db),
+                success=f"{taxon} movida a {to_code}.",
+            ):
+                st.rerun()
+        if col2.button("Cancelar", use_container_width=True, key=f"move_cancel_{taxon}"):
             st.rerun()
-    if col2.button("Cancelar", use_container_width=True):
-        st.rerun()
+    elif search:
+        st.info(f"No existe el grupo **{search}**. Puedes crearlo y mover la especie ahí:")
+        new_name = st.text_input(
+            "Nombre del grupo nuevo:", key=f"move_newname_{taxon}", placeholder="Ej. Peces de arrecife",
+        )
+        new_desc = st.text_area("Descripción (opcional):", key=f"move_newdesc_{taxon}", height=70)
+        col1, col2 = st.columns(2)
+        if col1.button(
+            "✅ Crear grupo y mover", type="primary", use_container_width=True,
+            disabled=not new_name.strip(), key=f"move_create_{taxon}",
+        ):
+            def _create_and_move(search=search, new_name=new_name, new_desc=new_desc, note=note):
+                move_species(taxon, from_code, search, new_name.strip(), expert, note, db)
+                if new_desc.strip():
+                    set_group_description(search, new_desc.strip(), expert, db)
+            if run_db_action(
+                _create_and_move, success=f"Grupo {search} creado y {taxon} movida ahí.",
+            ):
+                st.rerun()
+        if col2.button("Cancelar", use_container_width=True, key=f"move_cancel2_{taxon}"):
+            st.rerun()
+    else:
+        st.caption("Escribe el código o nombre del grupo destino para buscarlo.")
 
 
 @st.dialog("💡 Proponer nuevo grupo funcional", width="large")
@@ -151,8 +202,6 @@ with st.sidebar:
     st.divider()
     st.subheader("Filtrar Taxonomía")
     st.caption("Selecciona para filtrar por nivel")
-
-    summary = get_groups_summary(db)
 
     if "selected_group" not in st.session_state:
         st.session_state.selected_group = list(nav_groups.keys())[0]

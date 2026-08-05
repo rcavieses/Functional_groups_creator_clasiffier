@@ -43,6 +43,17 @@ STATUS_BADGE = {"pending": "⏳ Pendiente", "approved": "✅ Aplicada", "rejecte
 LEVEL_COL = {"Género": "genus", "Familia": "family", "Orden": "order_taxon", "Clase": "class_taxon", "Filum": "phylum"}
 
 
+def _clean(val) -> str:
+    """Coerce a proposal field to a plain string, treating NULL/NaN as empty.
+
+    pandas reads SQL NULLs as float('nan'), and `nan or default` returns nan
+    (NaN is truthy) — so plain `or` chains leak a stray "nan" into notes/UI.
+    """
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return ""
+    return str(val)
+
+
 @st.cache_data
 def load_groups() -> dict[str, str]:
     gdf = pd.read_csv(GROUPS_CSV)
@@ -115,13 +126,13 @@ for _, prop in view.iterrows():
         )
 
         if ptype == "deletion":
-            st.markdown(f"**Razón para eliminar:** {prop.get('reason') or '—'}")
+            st.markdown(f"**Razón para eliminar:** {_clean(prop.get('reason')) or '—'}")
         elif ptype == "modification":
-            st.markdown(f"**Modificación sugerida:** {prop.get('reason') or '—'}")
+            st.markdown(f"**Modificación sugerida:** {_clean(prop.get('reason')) or '—'}")
         else:
-            st.markdown(f"**Descripción:** {prop.get('description') or '—'}")
-            if prop.get("justification"):
-                st.markdown(f"**Justificación:** {prop.get('justification')}")
+            st.markdown(f"**Descripción:** {_clean(prop.get('description')) or '—'}")
+            if _clean(prop.get("justification")):
+                st.markdown(f"**Justificación:** {_clean(prop.get('justification'))}")
 
         st.metric("Especies afectadas (actualmente en este grupo)", n_affected)
 
@@ -210,17 +221,18 @@ for _, prop in view.iterrows():
                       use_container_width=True, disabled=apply_disabled):
             def _do_apply(pid=pid, code=code, to_code=to_code, to_name=to_name, selected_taxa=selected_taxa,
                           prop=prop, new_code=new_code, new_name=new_name, target_label=target_label):
-                note = f"Aplicado desde propuesta de experto #{pid} ({prop.get('proposed_by')}): {prop.get('reason') or prop.get('description') or ''}"
+                reason_or_desc = _clean(prop.get("reason")) or _clean(prop.get("description"))
+                note = f"Aplicado desde propuesta de experto #{pid} ({prop.get('proposed_by')}): {reason_or_desc}"
                 if target_label == NEW_GROUP_OPTION and new_code and new_name:
                     propose_new_group_detailed(
                         new_code, new_name,
                         description=f"Creado al aplicar la propuesta #{pid} sobre {code} — {prop.get('group_name')}.",
-                        justification=prop.get("reason") or prop.get("description") or "",
+                        justification=reason_or_desc,
                         expert=expert, db=db,
                     )
                 if selected_taxa and to_code:
                     apply_group_proposal_changes(selected_taxa, code, to_code, to_name, expert, note, db)
-                resolve_group_proposal(pid, "approved", expert, db, note=prop.get("reason") or prop.get("description") or "")
+                resolve_group_proposal(pid, "approved", expert, db, note=reason_or_desc)
 
             if run_db_action(_do_apply, spinner="Aplicando cambio…"):
                 st.success("Propuesta aplicada.")
@@ -229,7 +241,7 @@ for _, prop in view.iterrows():
         if bc2.button("❌ Rechazar", key=f"reject_{pid}", use_container_width=True, disabled=apply_disabled):
             if run_db_action(
                 lambda: resolve_group_proposal(pid, "rejected", expert, db,
-                                                note=prop.get("reason") or prop.get("description") or ""),
+                                                note=_clean(prop.get("reason")) or _clean(prop.get("description"))),
                 spinner="Registrando rechazo…",
             ):
                 st.warning("Propuesta rechazada.")

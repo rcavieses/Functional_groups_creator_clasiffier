@@ -635,6 +635,52 @@ def validate_species_bulk(taxa: list[str], expert: str, db):
         validate_species(taxon, expert, db)
 
 
+def _validate_group_on_structural_change(group_code: str, expert: str, db):
+    """Bulk-validate the other pending species still sitting in `group_code`.
+
+    A real structural change to a group (a species moved in/out, removed, or split
+    into a proposed group) is treated as the expert having reviewed that group's
+    current composition — so the rest of its pending members get the same
+    'validated' status, instead of requiring a species-by-species click-through.
+    UNCLASSIFIED is exempt: by definition nothing there has been sorted yet, so it
+    must never be silently marked reviewed.
+    """
+    if not group_code or group_code == "UNCLASSIFIED":
+        return
+
+    from sqlalchemy import text
+
+    now = _now()
+
+    def _txn():
+        with db.begin() as conn:
+            conn.execute(
+                text(
+                    """UPDATE species SET status = 'validated', last_modified_by = :expert, last_modified_at = :now
+                       WHERE current_code = :code AND status = 'pending'"""
+                ),
+                {"expert": expert, "now": now, "code": group_code},
+            )
+            conn.execute(
+                text(
+                    """INSERT INTO audit_log (taxon, action, expert, from_code, note, timestamp)
+                       VALUES (:taxon, :action, :expert, :from_code, :note, :timestamp)"""
+                ),
+                {
+                    "taxon": f"[Grupo: {group_code}]",
+                    "action": "auto_validate_group_touch",
+                    "expert": expert,
+                    "from_code": group_code,
+                    "note": "Validación automática: el grupo tuvo un cambio estructural (especie movida/eliminada/propuesta aplicada)",
+                    "timestamp": now,
+                },
+            )
+
+    _with_retry(_txn)
+    if _SESSION_KEY in st.session_state:
+        del st.session_state[_SESSION_KEY]
+
+
 def remove_species(taxon: str, current_code: str, expert: str, note: str, db):
     now = _now()
     updates = {"status": "removed", "last_modified_by": expert, "last_modified_at": now}
@@ -642,6 +688,7 @@ def remove_species(taxon: str, current_code: str, expert: str, note: str, db):
         taxon, updates, "remove",
         {"expert": expert, "from_code": current_code, "note": note}, db,
     )
+    _validate_group_on_structural_change(current_code, expert, db)
 
 
 def move_species(taxon: str, from_code: str, to_code: str, to_name: str, expert: str, note: str, db):
@@ -654,6 +701,9 @@ def move_species(taxon: str, from_code: str, to_code: str, to_name: str, expert:
         taxon, updates, "move",
         {"expert": expert, "from_code": from_code, "to_code": to_code, "to_name": to_name, "note": note}, db,
     )
+    _validate_group_on_structural_change(from_code, expert, db)
+    if to_code != from_code:
+        _validate_group_on_structural_change(to_code, expert, db)
 
 
 def restore_species(taxon: str, original_code: str, original_group: str, expert: str, db):
@@ -703,6 +753,7 @@ def propose_new_group(
     if _PROPOSED_KEY in st.session_state:
         del st.session_state[_PROPOSED_KEY]
     _sync_species_cache(taxon, updates)
+    _validate_group_on_structural_change(from_code, expert, db)
 
 
 def rate_group(group_code: str, group_name: str, rating: int, comment: str, expert: str, db):

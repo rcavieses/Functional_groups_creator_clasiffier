@@ -133,6 +133,26 @@ with tab1:
 
     # Downloads
     st.subheader("Descargar resultados")
+
+    taxonomy_cols = ["kingdom", "phylum", "class_taxon", "order_taxon", "family", "genus"]
+    available_taxonomy_cols = [c for c in taxonomy_cols if c in active.columns]
+
+    export_taxonomy = active[["current_group"] + available_taxonomy_cols + ["taxon"]].copy()
+    export_taxonomy.columns = (
+        ["grupo_funcional"]
+        + [c.replace("_taxon", "") for c in available_taxonomy_cols]
+        + ["especie"]
+    )
+
+    st.download_button(
+        "📥 CSV — Grupo funcional por nivel taxonómico",
+        data=export_taxonomy.to_csv(index=False).encode("utf-8"),
+        file_name="grupos_funcionales_taxonomia.csv",
+        mime="text/csv",
+        use_container_width=True,
+        help="Primera columna: grupo funcional. Columnas intermedias: niveles taxonómicos (reino → género). Última columna: especie.",
+    )
+
     col_dl1, col_dl2 = st.columns(2)
 
     export_active = active[
